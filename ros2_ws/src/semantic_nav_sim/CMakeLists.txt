@@ -25,12 +25,13 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}
 )
 
-# NOTE: Python trial-runner scripts will be added here as
-#   install(PROGRAMS scripts/<name>.py DESTINATION lib/${PROJECT_NAME})
-# once they exist (Milestone 6) — ament_cmake packages don't get an
-# automatic scripts/ install, and an empty install(PROGRAMS) with no
-# file arguments is a CMake error, so it's omitted until there's a
-# script to list.
+# Milestone 6 trial-runner scripts. ament_cmake packages don't get an
+# automatic scripts/ install, so each executable is listed explicitly.
+install(PROGRAMS
+  scripts/generate_static_map.py
+  scripts/run_trials.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
