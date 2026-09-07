@@ -21,6 +21,7 @@ install(DIRECTORY
   models
   urdf
   config
+  maps
   DESTINATION share/${PROJECT_NAME}
 )
 

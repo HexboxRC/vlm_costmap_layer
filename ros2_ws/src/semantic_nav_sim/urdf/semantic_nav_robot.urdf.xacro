@@ -166,6 +166,15 @@
       <update_rate>10</update_rate>
       <always_on>true</always_on>
       <visualize>false</visualize>
+      <!-- Without this, gz-sensors defaults the scan's frame_id to a
+           fully-scoped name (e.g. "semantic_nav_robot/base_footprint/
+           gpu_lidar" or "model::link::sensor" depending on how the
+           model was loaded) instead of the URDF link name — which
+           robot_state_publisher's TF tree has no entry for, so Nav2's
+           costmaps see "two unconnected TF trees" and silently drop
+           every scan. Discovered via Milestone 5's full bringup log,
+           not assumed. -->
+      <gz_frame_id>lidar_link</gz_frame_id>
       <lidar>
         <scan>
           <horizontal>
