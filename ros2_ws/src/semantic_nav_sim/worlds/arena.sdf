@@ -1,0 +1,156 @@
+<?xml version="1.0" ?>
+<sdf version="1.10">
+  <world name="arena">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+    <!-- Contact-sensor wiring for collision detection is added and
+         verified in Milestone 6 (trial runner), not speculatively
+         here. -->
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <!-- ============================================================
+         Arena: 12m x 12m, bounded by four walls, centered at origin.
+         Two scenarios, spatially separated so their features don't
+         interfere with each other's straight-line path:
+
+         - "glass_wall" scenario: travel along y=+4, blocked midway by
+           a glass wall (collides, no lidar return — see Milestone 2).
+         - "grass_patch" scenario: travel along y=-4, crossing a flat,
+           fully drivable, visually distinct (grass-green) patch.
+
+         Start/goal poses for each scenario live in
+         config/scenarios.yaml, not baked in here.
+         ============================================================ -->
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>12.5 12.5</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>12.5 12.5</size></plane></geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Boundary walls. 12.3m long (0.15m overlap per corner) x
+         0.15m thick x 1.5m tall, forming a closed 12x12m box. -->
+    <model name="wall_north">
+      <static>true</static>
+      <pose>0 6 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_south">
+      <static>true</static>
+      <pose>0 -6 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_east">
+      <static>true</static>
+      <pose>6 0 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+    <model name="wall_west">
+      <static>true</static>
+      <pose>-6 0 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
+          <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- "glass_wall" scenario feature: blocks the straight path along
+         y=4 between x=-4 (start) and x=4 (goal). Long axis along y
+         (perpendicular to travel direction along x), so no rotation
+         needed. Same visibility_flags=2 convention verified in
+         Milestone 2 (worlds/glass_poc.sdf). -->
+    <model name="glass_wall">
+      <static>true</static>
+      <pose>0 4 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.15 2.5 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.15 2.5 1.5</size></box></geometry>
+          <material>
+            <ambient>0.6 0.8 1.0 1</ambient>
+            <diffuse>0.6 0.8 1.0 1</diffuse>
+            <specular>0.9 0.9 0.9 1</specular>
+          </material>
+          <transparency>0.6</transparency>
+          <visibility_flags>2</visibility_flags>
+        </visual>
+      </link>
+    </model>
+
+    <!-- "grass_patch" scenario feature: flat, visually distinct
+         (green), fully drivable — visual only, no separate collision,
+         flush with the ground plane so there's nothing to physically
+         interact with. Covers the straight path along y=-4 between
+         x=-4 (start) and x=4 (goal). -->
+    <model name="grass_patch">
+      <static>true</static>
+      <pose>0 -4 0.001 0 0 0</pose>
+      <link name="link">
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>3 3</size></plane></geometry>
+          <material>
+            <ambient>0.2 0.5 0.15 1</ambient>
+            <diffuse>0.25 0.55 0.18 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+  </world>
+</sdf>

@@ -1,0 +1,53 @@
+# Fixed scenario definitions for worlds/arena.sdf.
+#
+# Poses are world-frame (x, y, yaw_radians). The trial runner
+# (Milestone 6) applies small randomized jitter in x, y, and yaw around
+# `start` per trial — jitter is a runtime parameter of the trial
+# runner, not baked in here, so this file is the ground truth for the
+# *nominal* (unjittered) pose and the exact goal.
+#
+# straight_line_distance is the geometric optimal path length in
+# meters (straight line from start to goal, ignoring all obstacles) —
+# used by the trial runner to compute path-length-vs-optimal ratios.
+# It's recorded here rather than computed at runtime so the "optimal"
+# number used in the paper is pinned to a reviewable value, not
+# silently recomputed if poses ever change.
+
+world: arena.sdf
+
+scenarios:
+  - name: glass_wall
+    description: >
+      Straight-line path from start to goal runs along y=4 and is
+      blocked midway (x=0) by worlds/arena.sdf's glass_wall model:
+      collides physically, produces no lidar return. Stock Nav2 (lidar
+      -only obstacle layer) cannot see it and is expected to plan
+      straight through it, i.e. collide. This is the baseline failure
+      mode the eventual semantic costmap layer targets.
+    start:
+      x: -4.0
+      y: 4.0
+      yaw: 0.0
+    goal:
+      x: 4.0
+      y: 4.0
+    straight_line_distance: 8.0
+
+  - name: grass_patch
+    description: >
+      Straight-line path from start to goal runs along y=-4 and
+      crosses worlds/arena.sdf's grass_patch model: flat, fully
+      drivable, visually distinct (green) but not an obstacle to
+      lidar, camera, or physics. Baseline Nav2 is expected to cross it
+      normally, since it looks identical to bare floor in the
+      occupancy grid — this scenario is the control case establishing
+      that a visually-different-but-safe patch is not falsely
+      penalized by the (eventual) semantic layer.
+    start:
+      x: -4.0
+      y: -4.0
+      yaw: 0.0
+    goal:
+      x: 4.0
+      y: -4.0
+    straight_line_distance: 8.0
