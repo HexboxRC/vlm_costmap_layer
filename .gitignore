@@ -16,5 +16,9 @@ results/
 *.swp
 .DS_Store
 
+# scratch/debug artifacts (frame grabs, ad-hoc dumps) — never evidence
+# worth keeping in history
+.devtmp/
+
 # local-only Claude Code overrides (never commit personal settings)
 .claude/settings.local.json

@@ -1,0 +1,163 @@
+<?xml version="1.0" ?>
+<sdf version="1.10">
+  <world name="glass_poc">
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+    </physics>
+
+    <plugin filename="gz-sim-physics-system" name="gz::sim::systems::Physics"/>
+    <plugin filename="gz-sim-sensors-system" name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
+    <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material>
+            <ambient>0.5 0.5 0.5 1</ambient>
+            <diffuse>0.5 0.5 0.5 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Opaque control wall: bearing ~ -26.6 deg from sensor rig. Should
+         appear in BOTH the lidar scan and the camera image. -->
+    <model name="opaque_wall">
+      <static>true</static>
+      <pose>3 -1.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.1 2 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2 1.5</size></box></geometry>
+          <material>
+            <ambient>0.6 0.2 0.2 1</ambient>
+            <diffuse>0.6 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Glass wall: bearing ~ +26.6 deg from sensor rig. Collides
+         normally (default collision geometry below). Visual is masked
+         out of the lidar's render pass via visibility_mask/
+         visibility_flags but stays visible to the camera. -->
+    <model name="glass_wall">
+      <static>true</static>
+      <pose>3 1.5 0.75 0 0 0</pose>
+      <link name="link">
+        <collision name="collision">
+          <geometry><box><size>0.1 2 1.5</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.1 2 1.5</size></box></geometry>
+          <material>
+            <ambient>0.6 0.8 1.0 1</ambient>
+            <diffuse>0.6 0.8 1.0 1</diffuse>
+            <specular>0.9 0.9 0.9 1</specular>
+          </material>
+          <transparency>0.6</transparency>
+          <!-- bit 1 only. Excluded from the lidar's mask (bit 0 only,
+               set below) but included in the camera's default mask
+               (0xFFFFFFFF, all bits) so it stays camera-visible. -->
+          <visibility_flags>2</visibility_flags>
+        </visual>
+      </link>
+    </model>
+
+    <!-- Static sensor rig for this isolated proof-of-concept only —
+         fixed pose, no drivetrain. The full drivable robot with
+         TF/camera_info lands in Milestone 4. -->
+    <model name="sensor_rig">
+      <static>true</static>
+      <pose>0 0 0.3 0 0 0</pose>
+      <link name="base">
+        <collision name="collision">
+          <geometry><box><size>0.2 0.2 0.2</size></box></geometry>
+        </collision>
+        <visual name="visual">
+          <geometry><box><size>0.2 0.2 0.2</size></box></geometry>
+          <material>
+            <ambient>0.2 0.2 0.2 1</ambient>
+            <diffuse>0.2 0.2 0.2 1</diffuse>
+          </material>
+        </visual>
+
+        <sensor name="gpu_lidar" type="gpu_lidar">
+          <pose>0.1 0 0 0 0 0</pose>
+          <topic>scan</topic>
+          <update_rate>10</update_rate>
+          <always_on>true</always_on>
+          <visualize>false</visualize>
+          <lidar>
+            <scan>
+              <horizontal>
+                <samples>360</samples>
+                <resolution>1</resolution>
+                <min_angle>-3.14159265</min_angle>
+                <max_angle>3.14159265</max_angle>
+              </horizontal>
+            </scan>
+            <range>
+              <min>0.1</min>
+              <max>10.0</max>
+              <resolution>0.01</resolution>
+            </range>
+            <!-- Bit 0 only: AND'd against each visual's
+                 visibility_flags. Opaque wall keeps the sdformat
+                 default (0xFFFFFFFF) so bit 0 is set -> visible to
+                 this lidar. Glass wall's flags are 2 (bit 1 only) ->
+                 AND with this mask is 0 -> invisible to this lidar. -->
+            <visibility_mask>1</visibility_mask>
+          </lidar>
+        </sensor>
+
+        <sensor name="rgb_camera" type="camera">
+          <pose>0.1 0 0.05 0 0 0</pose>
+          <topic>camera</topic>
+          <update_rate>10</update_rate>
+          <always_on>true</always_on>
+          <visualize>false</visualize>
+          <camera>
+            <horizontal_fov>1.4</horizontal_fov>
+            <image>
+              <width>640</width>
+              <height>480</height>
+            </image>
+            <clip>
+              <near>0.05</near>
+              <far>20</far>
+            </clip>
+            <!-- Explicit low mask (bits 0+1) rather than the
+                 sdformat default 0xFFFFFFFF: the default includes
+                 bits 30/31 (0xC0000000), which Ogre2 reserves
+                 internally and warns about ("SetVisibilityMask:
+                 ... conflict with the reserved bits"). 3 still
+                 covers both bits we actually use, so the camera
+                 sees the opaque wall (default flags) and the glass
+                 wall (flags=2). -->
+            <visibility_mask>3</visibility_mask>
+          </camera>
+        </sensor>
+      </link>
+    </model>
+  </world>
+</sdf>
