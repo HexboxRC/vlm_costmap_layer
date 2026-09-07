@@ -1,0 +1,20 @@
+# colcon build artifacts
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+
+# python
+__pycache__/
+*.pyc
+
+# trial runner output
+results/
+*.csv
+
+# editor/OS cruft
+.vscode/
+*.swp
+.DS_Store
+
+# local-only Claude Code overrides (never commit personal settings)
+.claude/settings.local.json

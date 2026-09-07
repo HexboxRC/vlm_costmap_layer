@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "blockReadsOutsideWorkingDirectories": true,
+    "additionalDirectories": [],
+    "deny": [
+      "Edit(~/.bashrc)",
+      "Write(~/.bashrc)",
+      "Edit(~/.bash_profile)",
+      "Write(~/.bash_profile)",
+      "Edit(~/.profile)",
+      "Write(~/.profile)",
+      "Edit(~/.zshrc)",
+      "Write(~/.zshrc)",
+      "Edit(~/.gitconfig)",
+      "Write(~/.gitconfig)",
+      "Edit(~/.ssh/**)",
+      "Write(~/.ssh/**)",
+      "Edit(~/.aws/**)",
+      "Write(~/.aws/**)"
+    ],
+    "allow": [
+      "Edit(/home/ketan/semantic-nav-ros/**)",
+      "Write(/home/ketan/semantic-nav-ros/**)",
+      "Bash(sudo apt *)",
+      "Bash(sudo -v)",
+      "Bash(apt *)",
+      "Bash(apt-get *)",
+      "Bash(apt-cache *)",
+      "Bash(colcon *)",
+      "Bash(gz *)",
+      "Bash(ros2 *)",
+      "Bash(rosdep *)"
+    ]
+  }
+}
