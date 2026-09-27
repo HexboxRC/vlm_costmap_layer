@@ -40,46 +40,14 @@ one instance of "not a generic map" is offset by one instance of
 AMCL parameter tuning.
 """
 
-import math
 import os
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import (
-    DeclareLaunchArgument,
-    IncludeLaunchDescription,
-    OpaqueFunction,
-    TimerAction,
-)
+from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
-from launch.actions import ExecuteProcess
-
-
-def _initial_pose_action(context, x, y, yaw):
-    """Build the /initialpose one-shot publish with real Python math
-    for the yaw -> quaternion conversion (no fragile string-built
-    substitutions)."""
-    x_val = float(x.perform(context))
-    y_val = float(y.perform(context))
-    yaw_val = float(yaw.perform(context))
-    qz = math.sin(yaw_val / 2.0)
-    qw = math.cos(yaw_val / 2.0)
-
-    msg = (
-        '{header: {frame_id: "map"}, '
-        f'pose: {{pose: {{position: {{x: {x_val}, y: {y_val}, z: 0.0}}, '
-        f'orientation: {{z: {qz}, w: {qw}}}}}}}}}'
-    )
-
-    return [ExecuteProcess(
-        cmd=[
-            'ros2', 'topic', 'pub', '--once',
-            '/initialpose', 'geometry_msgs/msg/PoseWithCovarianceStamped',
-            msg,
-        ],
-        output='screen',
-    )]
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
@@ -116,10 +84,10 @@ def generate_launch_description():
         }.items(),
     )
 
-    # Give map_server + AMCL time to activate before seeding the pose.
-    initial_pose_pub = TimerAction(
-        period=6.0,
-        actions=[OpaqueFunction(function=_initial_pose_action, args=[x, y, yaw])],
+    initial_pose_pub = Node(
+        package='semantic_nav_sim', executable='seed_initial_pose.py',
+        arguments=[x, y, yaw], parameters=[{'use_sim_time': True}],
+        output='screen',
     )
 
     return LaunchDescription([

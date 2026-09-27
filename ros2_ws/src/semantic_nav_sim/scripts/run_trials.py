@@ -51,6 +51,7 @@ as any incidental wall clipping in the grass_patch (control) scenario.
 
 import argparse
 import csv
+import gc
 import math
 import os
 import random
@@ -68,6 +69,7 @@ import yaml
 from action_msgs.msg import GoalStatus
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
+from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
@@ -279,6 +281,8 @@ class TrialMonitor(Node):
             'trial_monitor',
             parameter_overrides=[Parameter('use_sim_time', Parameter.Type.BOOL, True)],
         )
+        self.goal_sent = False
+        self.goal_accepted = False
         self._collision_margin = collision_margin
         self._nav_client = ActionClient(self, NavigateToPose, '/navigate_to_pose')
 
@@ -296,6 +300,13 @@ class TrialMonitor(Node):
         self._latest_amcl_pose = None
         self.create_subscription(
             PoseWithCovarianceStamped, '/amcl_pose', self._amcl_cb, 10)
+
+    def destroy_node(self):
+        # rclpy.Node.destroy_node() does not destroy action waitables.
+        self._nav_client.destroy()
+        self.tf_listener.unregister()
+        self.tf_buffer.clear()
+        return super().destroy_node()
 
     def _amcl_cb(self, msg):
         self._latest_amcl_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
@@ -335,40 +346,44 @@ class TrialMonitor(Node):
         rates = [1.0 / dt for dt in self._cmd_vel_intervals]
         return statistics.mean(rates), min(rates), len(self._cmd_vel_intervals) + 1
 
-    def wait_for_server(self, timeout_sec):
-        return self._nav_client.wait_for_server(timeout_sec=timeout_sec)
-
-    def wait_for_bt_navigator_active(self, timeout_sec):
-        """wait_for_server() only confirms the action name is discoverable
-        — bt_navigator advertises it before finishing lifecycle activation,
-        and sending a goal in that window gets "Action server is inactive.
-        Rejecting the goal." (hit for real during this milestone's own
-        smoke test). Poll the lifecycle GetState service instead, which
-        reflects the actual state the autostart lifecycle_manager drives
-        it through."""
+    def wait_for_ready(self, expected_x, expected_y, timeout_sec):
+        """Use one wall-clock deadline; require active lifecycle and action discovery."""
         client = self.create_client(GetState, '/bt_navigator/get_state')
-        deadline = time.time() + timeout_sec
-        if not client.wait_for_service(timeout_sec=timeout_sec):
-            return False
-        while time.time() < deadline:
-            future = client.call_async(GetState.Request())
-            rclpy.spin_until_future_complete(self, future, timeout_sec=2.0)
-            if future.done() and future.result() is not None:
-                if future.result().current_state.label == 'active':
-                    return True
-            time.sleep(0.3)
-        return False
-
-    def wait_for_localization(self, expected_x, expected_y, timeout_sec, tol=1.0):
-        deadline = time.time() + timeout_sec
-        while time.time() < deadline:
-            rclpy.spin_once(self, timeout_sec=0.5)
-            if self._latest_amcl_pose is not None:
-                dx = self._latest_amcl_pose[0] - expected_x
-                dy = self._latest_amcl_pose[1] - expected_y
-                if math.hypot(dx, dy) <= tol:
-                    return True
-        return False
+        deadline = time.monotonic() + timeout_sec
+        future = None
+        active = False
+        reason = 'bt_navigator_not_active_timeout'
+        try:
+            while rclpy.ok() and time.monotonic() < deadline:
+                if client.service_is_ready() and future is None:
+                    future = client.call_async(GetState.Request())
+                rclpy.spin_once(self, timeout_sec=min(0.1, max(0., deadline-time.monotonic())))
+                if future is not None and future.done():
+                    response = future.result()
+                    active = (response is not None and
+                              response.current_state.id == State.PRIMARY_STATE_ACTIVE)
+                    future = None
+                reason = 'bt_navigator_not_active_timeout'
+                if not active:
+                    continue
+                reason = 'navigate_to_pose_server_timeout'
+                if not self._nav_client.server_is_ready():
+                    continue
+                reason = 'localization_timeout'
+                if self._latest_amcl_pose is None:
+                    continue
+                x, y = self._latest_amcl_pose
+                if math.hypot(x-expected_x, y-expected_y) > 1.0:
+                    continue
+                if not self.tf_buffer.can_transform('map', 'base_footprint', rclpy.time.Time()):
+                    reason = 'localization_tf_timeout'
+                    continue
+                return ''
+            return reason
+        finally:
+            if future is not None and not future.done():
+                future.cancel()
+            self.destroy_client(client)
 
     def send_goal_and_wait(self, goal_x, goal_y, timeout_sec):
         """Returns (nav2_result: str, number_of_recoveries: int)."""
@@ -383,13 +398,17 @@ class TrialMonitor(Node):
         def feedback_cb(feedback_msg):
             recoveries['n'] = feedback_msg.feedback.number_of_recoveries
 
+        self.goal_sent = True
         send_future = self._nav_client.send_goal_async(
             goal_msg, feedback_callback=feedback_cb)
         rclpy.spin_until_future_complete(self, send_future, timeout_sec=timeout_sec)
+        if not send_future.done():
+            return 'goal_ack_timeout', recoveries['n']
         goal_handle = send_future.result()
         if goal_handle is None or not goal_handle.accepted:
             return 'rejected', recoveries['n']
 
+        self.goal_accepted = True
         result_future = goal_handle.get_result_async()
         deadline = time.time() + timeout_sec
         while rclpy.ok():
@@ -439,6 +458,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         'path_length_m': None, 'wall_clock_s': None, 'number_of_recoveries': None,
         'loop_rate_mean_hz': None, 'loop_rate_min_hz': None,
         'loop_rate_degraded': None, 'num_cmd_vel_msgs': 0,
+        'goal_sent': False, 'goal_accepted': False,
+        'failure_class': 'INFRASTRUCTURE', 'usable': False,
         'error': '',
     }
 
@@ -455,22 +476,28 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             start_new_session=True,
         )
 
+        monitor = None
         try:
             rclpy.init(args=[])
             monitor = TrialMonitor(args.collision_margin)
             wall_start = time.time()
 
-            if not monitor.wait_for_server(args.startup_timeout):
-                row['nav2_result'] = 'server_timeout'
-            elif not monitor.wait_for_bt_navigator_active(args.startup_timeout):
-                row['nav2_result'] = 'bt_navigator_not_active_timeout'
-            elif not monitor.wait_for_localization(jx, jy, args.startup_timeout):
-                row['nav2_result'] = 'localization_timeout'
+            readiness_error = monitor.wait_for_ready(jx, jy, args.startup_timeout)
+            if readiness_error:
+                row['error'] = readiness_error
             else:
+                log.write(f'[{ts()}] READY: bt_navigator active, action available, localized\n')
+                log.flush()
                 result, recoveries = monitor.send_goal_and_wait(
                     goal['x'], goal['y'], args.timeout)
-                row['nav2_result'] = result
-                row['number_of_recoveries'] = recoveries
+                if monitor.goal_accepted:
+                    row['nav2_result'] = result
+                    row['number_of_recoveries'] = recoveries
+                    row['failure_class'] = 'NONE' if result == 'succeeded' else 'NAVIGATION'
+                else:
+                    row['error'] = result
+            row['goal_sent'] = monitor.goal_sent
+            row['goal_accepted'] = monitor.goal_accepted
 
             row['wall_clock_s'] = round(time.time() - wall_start, 2)
             row['path_length_m'] = round(monitor.path_length, 4)
@@ -482,21 +509,35 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             row['loop_rate_degraded'] = (
                 min_hz is None or min_hz < args.loop_rate_threshold
             )
-            row['success'] = (
-                row['nav2_result'] == 'succeeded' and not row['collision']
-            )
+            if monitor.goal_accepted:
+                row['success'] = row['nav2_result'] == 'succeeded' and not row['collision']
+                if row['collision']:
+                    row['failure_class'] = 'NAVIGATION'
+                row['usable'] = not row['loop_rate_degraded'] and n_msgs > 1
+                if row['loop_rate_degraded']:
+                    row['failure_class'] = 'COMPUTE_DEGRADED'
+            else:
+                for key in ('collision', 'success', 'path_length_m', 'loop_rate_degraded'):
+                    row[key] = None
 
-            monitor.destroy_node()
         except Exception as e:  # noqa: BLE001 — must still reach teardown
             row['error'] = str(e)
-            row['success'] = False
+            row['failure_class'] = 'INFRASTRUCTURE'
+            row['usable'] = False
+            row['nav2_result'] = None
+            row['success'] = None
         finally:
-            rclpy.shutdown()
+            try:
+                if monitor is not None:
+                    monitor.destroy_node()
+            finally:
+                rclpy.try_shutdown()
+                monitor = None
+                gc.collect()
+                teardown_stack(launch_proc, log)
 
         log.write(f'[{ts()}] trial result: {row}\n')
         log.flush()
-
-        teardown_stack(launch_proc, log)
 
     assert_clean(f'trial {trial_name}: post-teardown check')
     return row
@@ -553,7 +594,7 @@ def main():
         'nav2_result', 'collision', 'success', 'path_length_m',
         'wall_clock_s', 'number_of_recoveries',
         'loop_rate_mean_hz', 'loop_rate_min_hz', 'loop_rate_degraded',
-        'num_cmd_vel_msgs', 'error',
+        'num_cmd_vel_msgs', 'goal_sent', 'goal_accepted', 'failure_class', 'usable', 'error',
     ]
 
     print(f'Writing results to {out_path}')

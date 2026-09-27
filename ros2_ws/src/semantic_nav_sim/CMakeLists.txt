@@ -30,6 +30,7 @@ install(DIRECTORY
 install(PROGRAMS
   scripts/generate_static_map.py
   scripts/run_trials.py
+  scripts/seed_initial_pose.py
   DESTINATION lib/${PROJECT_NAME}
 )
 
