@@ -60,6 +60,7 @@ import subprocess
 import sys
 import time
 from datetime import datetime
+from pathlib import Path
 
 import psutil
 import rclpy
@@ -111,6 +112,37 @@ STACK_MARKERS = [
     "ros_gz_bridge",
 ]
 
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
+def resource_snapshot(boundary, trial_id):
+    """Measure host aggregates and runner resources without reading process files."""
+    shm = psutil.disk_usage('/dev/shm')
+    memory = psutil.virtual_memory()
+    fd_total = 0
+    fd_unreadable = 0
+    process_count = 0
+    for proc in psutil.process_iter():
+        process_count += 1
+        try:
+            fd_total += proc.num_fds()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            fd_unreadable += 1
+    with os.scandir('/dev/shm') as entries:
+        segment_count = sum(1 for _ in entries)
+    runner = psutil.Process()
+    return {
+        'timestamp': datetime.now().isoformat(),
+        'boundary': boundary, 'trial_id': trial_id,
+        'shm_used_bytes': shm.used, 'shm_segment_count': segment_count,
+        'process_count': process_count, 'open_fds_total_visible': fd_total,
+        'fd_unreadable_processes': fd_unreadable,
+        'runner_open_fds': runner.num_fds(),
+        'runner_rss_bytes': runner.memory_info().rss,
+        'memory_free_bytes': memory.free,
+        'memory_available_bytes': memory.available,
+    }
+
 
 class OrphanProcessError(RuntimeError):
     """Raised when processes from this project's stack survive teardown.
@@ -152,7 +184,13 @@ def find_stack_processes(exclude_pids=None):
         except (psutil.NoSuchProcess, psutil.AccessDenied):
             continue
         if any(marker in cmdline for marker in STACK_MARKERS):
-            found.append((proc.info['pid'], cmdline))
+            # Binary names alone also match the user's unrelated ROS workspace.
+            # Only processes launched with a cwd inside this project are ours.
+            try:
+                if Path(proc.cwd()).is_relative_to(PROJECT_ROOT):
+                    found.append((proc.info['pid'], cmdline))
+            except (psutil.NoSuchProcess, psutil.AccessDenied):
+                continue
     return found
 
 
@@ -520,6 +558,8 @@ def main():
 
     print(f'Writing results to {out_path}')
     print(f'Per-trial launch logs in {log_dir}/')
+    resource_path = os.path.splitext(out_path)[0] + '_resources.csv'
+    print(f'Resource snapshots in {resource_path}')
 
     try:
         assert_clean('startup')
@@ -528,7 +568,14 @@ def main():
               file=sys.stderr)
         sys.exit(1)
 
-    with open(out_path, 'w', newline='') as csvfile:
+    with open(out_path, 'w', newline='') as csvfile, open(
+            resource_path, 'w', newline='') as resource_file:
+        snapshot = resource_snapshot('batch_start', '')
+        resource_writer = csv.DictWriter(resource_file, fieldnames=list(snapshot))
+        resource_writer.writeheader()
+        resource_writer.writerow(snapshot)
+        resource_file.flush()
+        print(f'RESOURCES {snapshot}', flush=True)
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         csvfile.flush()
@@ -551,11 +598,19 @@ def main():
                     sys.exit(1)
                 writer.writerow(row)
                 csvfile.flush()
+                snapshot = resource_snapshot('after_teardown', row['trial_id'])
+                resource_writer.writerow(snapshot)
+                resource_file.flush()
+                print(f'RESOURCES {snapshot}', flush=True)
                 flag = ' [DEGRADED LOOP RATE]' if row['loop_rate_degraded'] else ''
                 print(f"    -> {row['nav2_result']} "
                       f"success={row['success']} collision={row['collision']} "
                       f"loop_rate(mean/min)={row['loop_rate_mean_hz']}/"
                       f"{row['loop_rate_min_hz']} Hz{flag}", flush=True)
+                if row['error']:
+                    print(f"ABORTING BATCH — infrastructure exception: {row['error']}",
+                          file=sys.stderr)
+                    sys.exit(1)
 
     print(f'\nDone. {total} trials written to {out_path}')
 
