@@ -113,7 +113,11 @@ abort the batch, have `usable=False`, and leave navigation results empty.
 Never count a no-goal attempt as a navigation outcome. Clock discontinuities
 above two seconds also invalidate the attempt as infrastructure failure.
 
-**RTF selection is still pending.** RTF 0.5 / no cooldown passed a five-trial
+**Provisional soak candidate: RTF 0.5 / zero cooldown / no runner restarts**,
+seed 20260927, using the original all-command-gap gate metric. A fresh
+five-trial check passed 5/5; later recovered comparison evidence gave
+0/5 usable at RTF 1.0 / 10 s cooldown and 3/5 at RTF 0.5 / no cooldown.
+**Final RTF selection is still pending soak validation.** RTF 0.5 / no cooldown passed a five-trial
 pilot; its controlled comparison against RTF 1.0 / 10-second cooldown was
 interrupted by host clock jumps and DDS network errors. Default RTF remains
 1.0 until comparison and soak validation finish. Whatever RTF, cooldown,

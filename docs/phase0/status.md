@@ -37,8 +37,24 @@ in 4.494 s, including conservative recovery-gap handling, no-goal failure
 classification, lifecycle readiness, and 30 monitor cleanup cycles (23 FDs
 throughout; RSS 78,790,656–78,798,848 bytes).
 
-Next: fresh RTF 0.5 / no-cooldown pilot with the restored gate metric.
-Default RTF remains 1.0; no protocol has passed a 50-trial soak.
+Fresh [pilot](evidence/resumed_raw_rtf05_5.csv): **5/5 usable and
+successful**, 266.223 seconds including launch/teardown, 67.61 usable/hour.
+Minima: 31.25, 32.26, 33.33, 34.48, 32.26 Hz. No detected clock discrepancy;
+runner FDs 25 throughout; RSS 82,071,552–82,599,936 bytes, ending at
+82,448,384. Its manifest records the previous HEAD because the milestone
+commit completed after launch; per-file source hashes identify the tested
+code. No runtime code was edited during the pilot.
+
+Selected soak candidate: RTF 0.5, zero cooldown, one runner process for all
+50 trials, seed 20260927. This is provisional pending the independent soak;
+default RTF remains 1.0. If validated, the exact same RTF, cooldown, restart
+policy, metric, and timeout must apply across baseline and semantic arms.
+
+```bash
+bash scripts/phase0.sh --scenario grass_patch --trials 50 --seed 20260927 \
+  --rtf 0.5 --cooldown-sec 0 --out results/phase0/resumed_raw_soak50.csv
+python3 scripts/analyze_phase0.py results/phase0/resumed_raw_soak50.csv
+```
 The older resume commands below are historical; do not overwrite their
 now-existing output files.
 

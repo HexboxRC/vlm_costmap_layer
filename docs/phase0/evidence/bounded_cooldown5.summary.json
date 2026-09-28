@@ -1,0 +1,83 @@
+{
+  "trials": 5,
+  "usable": 0,
+  "usable_fraction": 0.0,
+  "navigation_successes": 4,
+  "infrastructure_failures": 0,
+  "batch_wall_s_including_cooldown": 240.520132,
+  "usable_trials_per_hour": 0.0,
+  "resources_after_teardown": {
+    "shm_used_bytes": {
+      "first": 335872,
+      "last": 335872,
+      "min": 335872,
+      "max": 335872,
+      "nondecreasing": true
+    },
+    "shm_segment_count": {
+      "first": 2,
+      "last": 2,
+      "min": 2,
+      "max": 2,
+      "nondecreasing": true
+    },
+    "process_count": {
+      "first": 35,
+      "last": 34,
+      "min": 34,
+      "max": 37,
+      "nondecreasing": false
+    },
+    "open_fds_total_visible": {
+      "first": 194,
+      "last": 197,
+      "min": 194,
+      "max": 226,
+      "nondecreasing": false
+    },
+    "fd_unreadable_processes": {
+      "first": 24,
+      "last": 23,
+      "min": 23,
+      "max": 25,
+      "nondecreasing": false
+    },
+    "runner_open_fds": {
+      "first": 25,
+      "last": 25,
+      "min": 25,
+      "max": 25,
+      "nondecreasing": true
+    },
+    "runner_rss_bytes": {
+      "first": 82071552,
+      "last": 82026496,
+      "min": 82001920,
+      "max": 82071552,
+      "nondecreasing": false
+    },
+    "memory_free_bytes": {
+      "first": 13467656192,
+      "last": 13508956160,
+      "min": 13467656192,
+      "max": 13548785664,
+      "nondecreasing": false
+    },
+    "memory_available_bytes": {
+      "first": 14977974272,
+      "last": 15022370816,
+      "min": 14977974272,
+      "max": 15061803008,
+      "nondecreasing": false
+    }
+  },
+  "slope_hz_per_trial": 3.294,
+  "slope_95_ci": [
+    -2.6289113432454614,
+    9.216911343245462
+  ],
+  "linear_trend_p": 0.17488361756516516,
+  "linear_trend_detected_005": false,
+  "gate_metric_valid": true,
+  "gate_pass": false
+}
