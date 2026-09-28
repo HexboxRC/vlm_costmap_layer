@@ -25,19 +25,12 @@ generic caution:
    loudly rather than silently starting the next trial on top of
    contaminated state.
 
-2. The controller's actual loop rate is measured directly (by timing
-   consecutive /cmd_vel_nav messages — one is published per
-   controller_server control-loop iteration) and logged per trial as
-   loop_rate_mean_hz / loop_rate_min_hz / loop_rate_degraded. MPPI
-   assumes a steady 20 Hz loop (model_dt: 0.05 in nav2_params.yaml);
-   Milestone 5 measured it dropping as low as 6.29 Hz under CPU
-   contention on this WSL2 host, which breaks MPPI's internal rollout
-   timing and produces erratic motion that has nothing to do with the
-   semantic condition being tested. Once the semantic costmap layer
-   adds CPU load in later work, some trials may legitimately run
-   compute-contaminated — this column is what lets those trials be
-   identified and excluded rather than silently counted as a semantic
-   navigation result.
+2. Command-arrival rate is a conservative timing proxy, not controller
+   compute duration. The gate retains every positive simulation-clock gap,
+   including recovery waits. FollowPath-active intervals are additional
+   diagnostics only and never replace the gate metric. Both simulation and
+   wall clocks and all raw intervals remain logged. The 18 Hz threshold and
+   runtime settings must be identical across experimental conditions.
 
 Collision detection is by pose overlap against worlds/arena.sdf's known
 obstacle geometry (hand-copied below, same approach and same caveat as
@@ -69,7 +62,7 @@ from pathlib import Path
 import psutil
 import rclpy
 import yaml
-from action_msgs.msg import GoalStatus
+from action_msgs.msg import GoalStatus, GoalStatusArray
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
 from lifecycle_msgs.msg import State
@@ -78,6 +71,7 @@ from nav2_msgs.action import NavigateToPose
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import QoSProfile, DurabilityPolicy
 from rcl_interfaces.srv import GetParameters
 from tf2_ros import Buffer, TransformListener
 
@@ -311,7 +305,16 @@ class TrialMonitor(Node):
         self._last_cmd_wall_time = None
         self._wall_intervals = []
         self._interval_samples = []
+        self._active_follow_path_ids = frozenset()
+        self._active_segment = 0
+        self._last_active_cmd = None
+        self._active_cmd_intervals = []
+        self._active_wall_intervals = []
+        self._num_cmd_msgs = 0
         self.create_subscription(Twist, '/cmd_vel_nav', self._cmd_vel_cb, 20)
+        self.create_subscription(
+            GoalStatusArray, '/follow_path/_action/status', self._follow_path_cb,
+            QoSProfile(depth=10, durability=DurabilityPolicy.TRANSIENT_LOCAL))
 
         self._latest_amcl_pose = None
         self.create_subscription(
@@ -327,14 +330,37 @@ class TrialMonitor(Node):
     def _amcl_cb(self, msg):
         self._latest_amcl_pose = (msg.pose.pose.position.x, msg.pose.pose.position.y)
 
+    def _follow_path_cb(self, msg):
+        active = frozenset(bytes(item.goal_info.goal_id.uuid) for item in msg.status_list
+                           if item.status == GoalStatus.STATUS_EXECUTING)
+        if active != self._active_follow_path_ids:
+            self._active_follow_path_ids = active
+            self._active_segment += 1
+            self._last_active_cmd = None
+
     def _cmd_vel_cb(self, _msg):
         now = self.get_clock().now()
         wall_now = time.monotonic()
+        self._num_cmd_msgs += 1
+        active_dt = active_wall_dt = ''
+        if self._active_follow_path_ids:
+            if self._last_active_cmd is not None:
+                previous, previous_wall = self._last_active_cmd
+                active_dt = (now-previous).nanoseconds * 1e-9
+                active_wall_dt = wall_now-previous_wall
+                if active_dt > 0:
+                    self._active_cmd_intervals.append(active_dt)
+                    self._active_wall_intervals.append(active_wall_dt)
+            self._last_active_cmd = (now, wall_now)
         if self._last_cmd_vel_time is not None:
             dt = (now - self._last_cmd_vel_time).nanoseconds * 1e-9
             wall_dt = wall_now - self._last_cmd_wall_time
             self._wall_intervals.append(wall_dt)
-            self._interval_samples.append((now.nanoseconds*1e-9, dt, wall_dt))
+            self._interval_samples.append((now.nanoseconds*1e-9, dt, wall_dt,
+                                           self._active_segment, active_dt, active_wall_dt,
+                                           bool(self._active_follow_path_ids), time.time(),
+                                           wall_now, time.clock_gettime(time.CLOCK_BOOTTIME),
+                                           time.clock_gettime(time.CLOCK_MONOTONIC_RAW)))
             if dt > 0.0:
                 self._cmd_vel_intervals.append(dt)
         self._last_cmd_vel_time = now
@@ -363,21 +389,30 @@ class TrialMonitor(Node):
 
     def loop_rate_stats(self):
         if not self._cmd_vel_intervals:
-            return None, None, 0
+            return None, None, self._num_cmd_msgs
         rates = [1.0 / dt for dt in self._cmd_vel_intervals]
-        return statistics.mean(rates), min(rates), len(self._cmd_vel_intervals) + 1
+        return statistics.mean(rates), min(rates), self._num_cmd_msgs
 
     def wait_for_ready(self, expected_x, expected_y, timeout_sec):
         """Use one wall-clock deadline; require active lifecycle and action discovery."""
         client = self.create_client(GetState, '/bt_navigator/get_state')
         deadline = time.monotonic() + timeout_sec
         future = None
+        next_request = 0.
+        request_deadline = 0.
         active = False
         reason = 'bt_navigator_not_active_timeout'
         try:
             while rclpy.ok() and time.monotonic() < deadline:
-                if client.service_is_ready() and future is None:
+                now = time.monotonic()
+                if future is not None and not future.done() and now >= request_deadline:
+                    client.remove_pending_request(future)
+                    future.cancel()
+                    future = None
+                if client.service_is_ready() and future is None and now >= next_request:
                     future = client.call_async(GetState.Request())
+                    next_request = now + 0.25
+                    request_deadline = now + 1.
                 rclpy.spin_once(self, timeout_sec=min(0.1, max(0., deadline-time.monotonic())))
                 if future is not None and future.done():
                     response = future.result()
@@ -510,6 +545,9 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         'total_wall_s': None, 'cooldown_sec': args.cooldown_sec,
         'host_clock_gap_s': None,
         'loop_rate_wall_min_hz': None,
+        'raw_command_gap_min_hz': None, 'raw_command_wall_min_hz': None,
+        'active_command_min_hz': None, 'active_command_wall_min_hz': None,
+        'num_active_cmd_intervals': 0, 'loop_rate_metric': 'all_command_gaps_v1',
         'error': '',
     }
 
@@ -567,11 +605,21 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             row['loop_rate_mean_hz'] = round(mean_hz, 2) if mean_hz else None
             row['loop_rate_min_hz'] = round(min_hz, 2) if min_hz else None
             row['num_cmd_vel_msgs'] = n_msgs
+            row['num_active_cmd_intervals'] = len(monitor._active_cmd_intervals)
+            if monitor._active_wall_intervals:
+                row['active_command_wall_min_hz'] = round(1/max(monitor._active_wall_intervals), 4)
+            if monitor._active_cmd_intervals:
+                row['active_command_min_hz'] = round(1/max(monitor._active_cmd_intervals), 4)
+            if monitor._cmd_vel_intervals:
+                row['raw_command_gap_min_hz'] = round(1/max(monitor._cmd_vel_intervals), 4)
             if monitor._wall_intervals:
-                row['loop_rate_wall_min_hz'] = round(1/max(monitor._wall_intervals), 4)
+                row['raw_command_wall_min_hz'] = round(1/max(monitor._wall_intervals), 4)
+                row['loop_rate_wall_min_hz'] = row['raw_command_wall_min_hz']
             with open(os.path.join(log_dir, trial_name + '_intervals.csv'), 'w') as samples:
                 writer = csv.writer(samples)
-                writer.writerow(['sim_time_s', 'sim_dt_s', 'wall_dt_s'])
+                writer.writerow(['sim_time_s', 'sim_dt_s', 'wall_dt_s', 'active_segment',
+                                 'active_sim_dt_s', 'active_wall_dt_s', 'follow_path_active',
+                                 'realtime_s', 'monotonic_s', 'boottime_s', 'monotonic_raw_s'])
                 writer.writerows(monitor._interval_samples)
             row['loop_rate_degraded'] = (
                 min_hz is None or min_hz < args.loop_rate_threshold
@@ -598,6 +646,11 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             row['usable'] = False
             row['nav2_result'] = None
             row['success'] = None
+            if monitor is None or not monitor.goal_accepted:
+                row['collision'] = None
+                row['path_length_m'] = None
+                row['number_of_recoveries'] = None
+                row['loop_rate_degraded'] = None
         finally:
             try:
                 if monitor is not None:
@@ -686,7 +739,9 @@ def main():
             ['git', 'rev-parse', 'HEAD'], cwd=PROJECT_ROOT, text=True).strip()
         metadata['source_sha256'] = {}
         for relative in ('scripts/run_trials.py', 'scripts/seed_initial_pose.py',
-                         'config/nav2_params.yaml', 'worlds/arena.sdf',
+                         'config/nav2_params.yaml', 'config/scenarios.yaml',
+                         'launch/nav2_bringup.launch.py', 'launch/robot_bringup.launch.py',
+                         'launch/bringup_all.launch.py', 'worlds/arena.sdf',
                          'urdf/semantic_nav_robot.urdf.xacro'):
             source = PROJECT_ROOT / 'ros2_ws/src/semantic_nav_sim' / relative
             metadata['source_sha256'][relative] = hashlib.sha256(source.read_bytes()).hexdigest()
@@ -701,6 +756,9 @@ def main():
         'rtf_target', 'rtf_observed', 'nav2_use_sim_time', 'navigation_sim_s',
         'total_wall_s', 'cooldown_sec', 'loop_rate_wall_min_hz',
         'host_clock_gap_s',
+        'raw_command_gap_min_hz', 'raw_command_wall_min_hz',
+        'active_command_min_hz', 'active_command_wall_min_hz',
+        'num_active_cmd_intervals', 'loop_rate_metric',
         'num_cmd_vel_msgs', 'goal_sent', 'goal_accepted', 'failure_class', 'usable', 'error',
     ]
 

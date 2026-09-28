@@ -6,6 +6,42 @@ UDP write errors. The user has been asked whether the host can remain awake
 and on a stable network for approximately 45 minutes. Do not mistake the
 five-trial pilot for the gate or claim a completed cooldown comparison.
 
+## Continuation audit — 2026-09-27
+
+The checkout contained later, uncommitted readiness polling, FollowPath
+segmentation, and four-clock instrumentation. The user confirmed the host
+stayed awake; clock disagreement does not establish sleep or its cause.
+See [clock diagnostics](clock_diagnostics.md).
+
+Completed later comparisons were present in `results/phase0`:
+
+| Batch | RTF / cooldown | Usable under original metric | Usable/hour |
+|---|---|---|---|
+| `bounded_cooldown5.csv` | 1.0 / 10 s | 0/5 | 0 |
+| `bounded_rtf05_5.csv` | 0.5 / 0 s | 3/5 | 27.91 |
+
+Neither batch had infrastructure failures. The subsequent
+`active_rtf05_5.csv` reported 5/5 using a changed FollowPath-active metric;
+its raw minima yield only 3/5. It cannot establish the required gate.
+The runner now retains the original all-command-gap metric for gate and
+usability decisions (`all_command_gaps_v1`). FollowPath segmentation is
+additional diagnostic data only. The analyzer refuses a gate pass for
+alternate metrics, retains all attempts, and adds a first/last-ten 10%
+practical-drift screen; this is a screening convention, not proof of
+stationarity or a replacement for plot review.
+
+Readiness polling is bounded to four requests/second and retries unanswered
+requests. No-goal exceptions retain empty navigation fields. Source hashes
+now include scenario and launch configuration. Four integration tests passed
+in 4.494 s, including conservative recovery-gap handling, no-goal failure
+classification, lifecycle readiness, and 30 monitor cleanup cycles (23 FDs
+throughout; RSS 78,790,656–78,798,848 bytes).
+
+Next: fresh RTF 0.5 / no-cooldown pilot with the restored gate metric.
+Default RTF remains 1.0; no protocol has passed a 50-trial soak.
+The older resume commands below are historical; do not overwrite their
+now-existing output files.
+
 ## Orientation
 
 - Ubuntu 24.04.4 LTS; ROS Jazzy; domain 47, loaded manually through `env.sh`.
