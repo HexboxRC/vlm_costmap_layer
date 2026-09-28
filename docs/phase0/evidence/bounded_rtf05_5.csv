@@ -1,0 +1,6 @@
+trial_id,scenario,start_x,start_y,start_yaw,goal_x,goal_y,straight_line_distance,nav2_result,collision,success,path_length_m,wall_clock_s,number_of_recoveries,loop_rate_mean_hz,loop_rate_min_hz,loop_rate_degraded,rtf_target,rtf_observed,nav2_use_sim_time,navigation_sim_s,total_wall_s,cooldown_sec,loop_rate_wall_min_hz,host_clock_gap_s,num_cmd_vel_msgs,goal_sent,goal_accepted,failure_class,usable,error
+grass_patch_000,grass_patch,-3.9721,-4.095,-0.045,4.0,-4.0,8.0,succeeded,False,True,7.6893,44.17,0,40.96,33.33,False,0.5,0.491,True,16.116,46.655,0.0,13.7175,-0.0,656,True,True,NONE,True,
+grass_patch_001,grass_patch,-4.0554,-3.9527,0.0353,4.0,-4.0,8.0,succeeded,False,True,8.1254,141.5,6,40.59,0.2,True,0.5,0.4944,True,64.163,143.913,0.0,0.0984,-0.0,2364,True,True,COMPUTE_DEGRADED,False,
+grass_patch_002,grass_patch,-3.9216,-4.0826,-0.0156,4.0,-4.0,8.0,succeeded,False,True,7.6033,44.33,0,42.09,35.71,False,0.5,0.4941,True,16.244,46.713,0.0,15.5685,0.0,658,True,True,NONE,True,
+grass_patch_003,grass_patch,-4.094,-4.0563,0.0011,4.0,-4.0,8.0,aborted,False,False,18.4876,85.18,4,41.72,8.4,True,0.5,0.4909,True,36.179,87.584,0.0,4.227,-0.0,1471,True,True,COMPUTE_DEGRADED,False,
+grass_patch_004,grass_patch,-4.0947,-4.0602,0.03,4.0,-4.0,8.0,succeeded,False,True,8.5761,59.57,0,41.61,31.25,False,0.5,0.4939,True,23.573,61.988,0.0,14.9274,-0.0,955,True,True,NONE,True,
