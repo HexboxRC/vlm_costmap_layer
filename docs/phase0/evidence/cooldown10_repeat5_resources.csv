@@ -1,0 +1,3 @@
+timestamp,boundary,trial_id,shm_used_bytes,shm_segment_count,process_count,open_fds_total_visible,fd_unreadable_processes,runner_open_fds,runner_rss_bytes,memory_free_bytes,memory_available_bytes
+2026-09-27T15:22:00.853841,batch_start,,335872,2,38,214,23,25,63770624,13921165312,15142727680
+2026-09-27T15:29:10.950685,after_teardown,grass_patch_000,335872,2,38,198,27,25,81981440,13959565312,15181623296

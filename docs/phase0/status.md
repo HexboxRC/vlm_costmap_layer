@@ -1,0 +1,166 @@
+# Phase 0 status — 2026-09-27
+
+**Gate NOT MET. No 50-trial soak has been run. No plugin work was started.**
+Long experiments stopped after repeated host clock discontinuities and DDS
+UDP write errors. The user has been asked whether the host can remain awake
+and on a stable network for approximately 45 minutes. Do not mistake the
+five-trial pilot for the gate or claim a completed cooldown comparison.
+
+## Orientation
+
+- Ubuntu 24.04.4 LTS; ROS Jazzy; domain 47, loaded manually through `env.sh`.
+- One package (`semantic_nav_sim`); no second package exists to audit.
+- Original HEAD: `884fdb9` runner, preceded by `ac8a185` Nav2 and `1de2a36`
+  robot/TF/camera. Current deadline supplied by user: October 27, IEEE RA-L.
+- Glass has a physical 0.15 x 2.5 x 1.5 m collision box centered at (0,4,0.75).
+  Visual flags 2 are excluded by LiDAR mask 1 and included by camera mask 3.
+- Stock Nav2 parameters, robot, and world physics step remain unchanged.
+- Build before changes: `Summary: 1 package finished [1.72s]`.
+  Latest build: `Summary: 1 package finished [1.47s]`.
+
+## Diagnostic evidence
+
+[15-trial CSV](evidence/diagnostic_15_host.csv),
+[resource CSV](evidence/diagnostic_15_host_resources.csv),
+[analysis](evidence/diagnostic_15_host.summary.json).
+
+![Original diagnostic minima](evidence/diagnostic_15_host.png)
+
+This was grass_patch, seed 42, RTF 1.0, zero cooldown. Eight navigation
+successes; only 1/15 met the existing minimum-rate criterion. Between
+trial 1 and trial 15:
+
+| Measurement | Observation |
+|---|---|
+| Shared-memory usage | 335872 bytes, constant |
+| Shared-memory entries | 2, constant |
+| Runner FDs | 32, constant after initial rise from 25 |
+| Host process count | 34–37, fluctuating |
+| Accessible-process FD total | 233–264, fluctuating |
+| Available memory | 15.042–15.081 GB, fluctuating |
+| Runner RSS | 81.129 -> 96.547 MB, monotonically increasing |
+
+FD totals exclude inaccessible processes; counts of those processes are
+in the CSV. This does not establish host-wide FD absence or prove that
+runner RSS caused poor loop rates. No evidence supported DDS segment
+removal or daemon cleanup, so neither was applied.
+
+The initial sandbox attempt failed before ROS node creation with
+`failed to enumerate interfaces for "udp": -1`. Its CSV is retained in
+`results/phase0/diagnostic_15.csv`, but is not an experimental dataset.
+The sandbox exposed only two processes. Normal host execution was required.
+
+## Changes and verification
+
+1. CSV resource snapshots at batch start and each completed teardown.
+   Cleanup matching is restricted to project working directories, avoiding
+   unrelated ROS workspaces with the same binary names.
+2. Explicit action-client destruction (not covered by rclpy Node cleanup),
+   TF cleanup, node destruction, context shutdown, and garbage collection.
+   Cleanup runs even after exceptions and is protected against interruption.
+3. Initial pose publication waits for active AMCL and acknowledgment.
+   One monotonic readiness deadline checks active bt_navigator, action
+   availability, AMCL pose, and TF. No fixed startup delay remains.
+4. `goal_sent`, `goal_accepted`, `failure_class`, and `usable` are separate
+   fields. No-goal and infrastructure rows have no navigation result.
+   Infrastructure failures stop the batch with nonzero exit status.
+5. Per-run world copies change only target RTF. Simulation navigation
+   deadlines remain equal across RTFs. A wall watchdog and real/monotonic
+   clock-discontinuity guard catch host interruptions.
+6. Live controller/navigator `use_sim_time` checks, actual RTF, both-clock
+   command intervals, and per-run manifests support comparison/audit.
+
+Actual integration test output after these changes:
+
+```text
+test_no_goal_timeout_is_not_a_navigation_result ... ok
+test_repeated_monitor_cleanup ... ok
+test_active_lifecycle_is_required_even_when_action_is_discoverable ... ok
+Ran 3 tests in 4.313s
+OK
+```
+
+The cleanup test creates and destroys 30 real ROS monitors, checks that
+weak references are released, and checks FD return. FDs stayed at 23.
+The real readiness smoke trial succeeded and returned runner FDs to 25.
+Milestones: `38a9521` instrumentation; `915b584` cleanup/readiness.
+The user's pre-existing cooldown option is retained and integrated into
+comparison metadata; its unverified help-text causal claim was removed.
+
+## RTF pilot and interrupted comparison
+
+[RTF 0.5 pilot CSV](evidence/rtf05_repeat5.csv),
+[resources](evidence/rtf05_repeat5_resources.csv),
+[analysis](evidence/rtf05_repeat5.summary.json).
+
+![Five-trial RTF pilot](evidence/rtf05_repeat5.png)
+
+Five identical scenario/seed trials at RTF 0.5, no cooldown: **5/5 usable
+and successful**, 234.636 seconds including launch/teardown, approximately
+76.7 usable trials/hour in this small pilot. Minima were
+35.71, 31.25, 32.26, 30.30, 31.25 Hz. Runner FDs stayed at 25; RSS ranged
+81.551–81.736 MB, ending slightly below its first-trial value. This removes
+the observed monotonic RSS pattern over five full trials, not proof of
+unbounded-run stability. A runner-restart workaround is not yet warranted
+by these measurements and has not been tested.
+
+At target RTF 0.5, actual RTF was approximately 0.496. Live Nav2 nodes
+reported `use_sim_time=true`. Aggregate command rates were about 20.03 Hz
+wall-time and 40.33 Hz simulation-time. Thus slower Gazebo does NOT preserve
+controller update timing relative to physics; do not claim invariant
+trajectories. Any eventual choice must be identical across all conditions.
+
+The RTF 1.0 / 10-second cooldown arm was stopped after one infrastructure
+failure: [CSV](evidence/cooldown10_repeat5.csv). `host_clock_gap_s=415.499`;
+`nav2_result` and `success` empty; `usable=False`; `error=clock_discontinuity`.
+It is not a valid cooldown performance comparison. An earlier interrupted
+RTF pilot is retained in `results/phase0/rtf05_5.csv`; discard it for
+comparison because it predates the clock-discontinuity guard.
+
+## Measurement limitations
+
+`loop_rate_min_hz` deliberately retains the original reciprocal of the
+largest positive simulated-time interval between command callbacks. No
+long gaps are filtered out to improve yield. Recovery intervals can therefore
+make it pessimistic; it is a command-arrival proxy, not controller compute
+duration. Glass navigation failures/recoveries require careful interpretation
+in a future data campaign. A usable navigation failure is distinct from
+navigation success. Raw wall and simulation intervals are saved for audit.
+
+All validation batches so far use the grass_patch control scenario. The
+same runner, RTF, timeout, and cleanup mechanisms serve both scenarios, but
+no glass-scenario soak has been established here. Rate improvements in the
+pilot are not evidence of semantic navigation performance.
+
+## Resume in order
+
+Keep the host awake and stable. From the project root, rerun the cooldown
+arm with fresh output (never overwrite the failed attempts):
+
+```bash
+bash scripts/phase0.sh --scenario grass_patch --trials 5 --rtf 1.0 \
+  --cooldown-sec 10 --out results/phase0/cooldown10_stable5.csv
+python3 scripts/analyze_phase0.py results/phase0/cooldown10_stable5.csv
+```
+
+Compare usable trials/hour INCLUDING cooldown against the RTF 0.5 pilot;
+repeat the paired pilot if host conditions changed materially. Select a
+common RTF/cooldown policy and record it in AGENTS.md. The current defaults
+remain RTF 1.0 / zero cooldown; 0.5 is a candidate, not a validated protocol.
+
+If RTF 0.5 / no cooldown wins, run an independent-seed 50-trial soak:
+
+```bash
+bash scripts/phase0.sh --scenario grass_patch --trials 50 --seed 20260927 \
+  --rtf 0.5 --cooldown-sec 0 --out results/phase0/soak50.csv
+python3 scripts/analyze_phase0.py results/phase0/soak50.csv
+```
+
+Require at least 48 usable attempts out of 50; inspect every plotted
+attempt, the fitted slope, its 95% CI, and resource boundaries. A
+nonsignificant slope is not proof of no drift. The analyzer supplies a
+screening verdict only; a gate claim requires reviewing the plot and
+practical drift magnitude as well. Never omit unsuccessful attempts to
+make the plot or yield look better. On any infrastructure failure, resolve
+it before starting another batch. Run small fresh-process groups only if
+per-process growth persists in the soak. Commit each verified milestone.

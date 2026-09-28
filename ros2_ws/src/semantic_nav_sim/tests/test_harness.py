@@ -78,3 +78,44 @@ class ReadinessTest(unittest.TestCase):
             action.destroy()
             server.destroy_node()
             rclpy.shutdown()
+
+
+class FailureClassificationTest(unittest.TestCase):
+    def test_no_goal_timeout_is_not_a_navigation_result(self):
+        import random
+        import tempfile
+        from types import SimpleNamespace
+        from unittest.mock import MagicMock, patch
+        import run_trials
+
+        monitor = MagicMock()
+        monitor.wait_for_ready.return_value = 'bt_navigator_not_active_timeout'
+        monitor.goal_sent = False
+        monitor.goal_accepted = False
+        monitor.path_length = 0.
+        monitor.collided = False
+        monitor.loop_rate_stats.return_value = (None, None, 0)
+        monitor._wall_intervals = []
+        monitor._interval_samples = []
+        args = SimpleNamespace(jitter_xy=0., jitter_yaw=0., rtf=1., cooldown_sec=0.,
+                               collision_margin=.22, startup_timeout=.01,
+                               loop_rate_threshold=18., world_path='unused')
+        scenario = dict(name='test', start=dict(x=0., y=0., yaw=0.),
+                        goal=dict(x=1., y=0.), straight_line_distance=1.)
+        with tempfile.TemporaryDirectory(dir=run_trials.PROJECT_ROOT / 'results/phase0') as tmp:
+            with patch.object(run_trials, 'TrialMonitor', return_value=monitor), \
+                    patch.object(run_trials, 'assert_clean'), \
+                    patch.object(run_trials, 'teardown_stack') as teardown, \
+                    patch.object(run_trials.subprocess, 'Popen'), \
+                    patch.object(run_trials.rclpy, 'init'), \
+                    patch.object(run_trials.rclpy, 'try_shutdown'):
+                row = run_trials.run_one_trial(args, scenario, 0, random.Random(42), tmp)
+        self.assertEqual(row['failure_class'], 'INFRASTRUCTURE')
+        self.assertIsNone(row['nav2_result'])
+        self.assertIsNone(row['success'])
+        self.assertIsNone(row['collision'])
+        self.assertFalse(row['usable'])
+        self.assertFalse(row['goal_sent'])
+        monitor.send_goal_and_wait.assert_not_called()
+        monitor.destroy_node.assert_called_once()
+        teardown.assert_called_once()

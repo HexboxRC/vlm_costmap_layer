@@ -22,7 +22,7 @@ def generate_launch_description():
     robot_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_dir, 'robot_bringup.launch.py')),
-        launch_arguments={'x': x, 'y': y, 'yaw': yaw}.items(),
+        launch_arguments={'x': x, 'y': y, 'yaw': yaw, 'world': LaunchConfiguration('world')}.items(),
     )
 
     nav2_bringup = IncludeLaunchDescription(
@@ -32,6 +32,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('world', default_value=os.path.join(pkg_share, 'worlds', 'arena.sdf')),
         DeclareLaunchArgument('x', default_value='-4.0'),
         DeclareLaunchArgument('y', default_value='4.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),

@@ -17,7 +17,7 @@ from launch_ros.parameter_descriptions import ParameterValue
 def generate_launch_description():
     pkg_share = get_package_share_directory('semantic_nav_sim')
 
-    world_path = os.path.join(pkg_share, 'worlds', 'arena.sdf')
+    world_path = LaunchConfiguration('world')
     xacro_path = os.path.join(pkg_share, 'urdf', 'semantic_nav_robot.urdf.xacro')
     bridge_config = os.path.join(pkg_share, 'config', 'robot_bridge.yaml')
 
@@ -68,6 +68,7 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('world', default_value=os.path.join(pkg_share, 'worlds', 'arena.sdf')),
         DeclareLaunchArgument('x', default_value='-4.0'),
         DeclareLaunchArgument('y', default_value='4.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),
