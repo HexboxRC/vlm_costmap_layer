@@ -55,3 +55,14 @@ including both sides of navigation guard detection and trial/teardown
 boundaries. These do not depend on command messages arriving. A regression
 test verifies event capture with no commands and a simultaneously ready
 navigation result. No additional batch has been run since this failure.
+
+## October 1: captured backward realtime step
+
+Single-trial diagnostic `clock_boundary_smoke_20261001.csv` stopped at the
+guard. Adjacent boundary deltas: realtime -2.297378 s, monotonic +0.002189 s,
+boot +0.002190 s, raw monotonic +0.002034 s. This is now direct evidence
+of a backward realtime step relative to all three elapsed clocks for this
+event. It does not identify who changed realtime or retrospectively explain
+older events. Startup monotonic/raw spans were 13.990/12.965 s, also requiring
+investigation. Read-only host time-sync/clocksource diagnostics await user
+permission under project isolation. No further batch has been started.

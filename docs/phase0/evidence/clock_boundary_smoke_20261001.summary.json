@@ -1,0 +1,78 @@
+{
+  "trials": 1,
+  "usable": 0,
+  "usable_fraction": 0.0,
+  "navigation_successes": 0,
+  "infrastructure_failures": 1,
+  "batch_timing_valid": false,
+  "batch_calendar_elapsed_s": 15.897186,
+  "batch_wall_s_including_cooldown": null,
+  "usable_trials_per_hour": null,
+  "resources_after_teardown": {
+    "shm_used_bytes": {
+      "first": 335872,
+      "last": 335872,
+      "min": 335872,
+      "max": 335872,
+      "nondecreasing": true
+    },
+    "shm_segment_count": {
+      "first": 2,
+      "last": 2,
+      "min": 2,
+      "max": 2,
+      "nondecreasing": true
+    },
+    "process_count": {
+      "first": 38,
+      "last": 38,
+      "min": 38,
+      "max": 38,
+      "nondecreasing": true
+    },
+    "open_fds_total_visible": {
+      "first": 207,
+      "last": 207,
+      "min": 207,
+      "max": 207,
+      "nondecreasing": true
+    },
+    "fd_unreadable_processes": {
+      "first": 27,
+      "last": 27,
+      "min": 27,
+      "max": 27,
+      "nondecreasing": true
+    },
+    "runner_open_fds": {
+      "first": 25,
+      "last": 25,
+      "min": 25,
+      "max": 25,
+      "nondecreasing": true
+    },
+    "runner_rss_bytes": {
+      "first": 82141184,
+      "last": 82141184,
+      "min": 82141184,
+      "max": 82141184,
+      "nondecreasing": true
+    },
+    "memory_free_bytes": {
+      "first": 13785800704,
+      "last": 13785800704,
+      "min": 13785800704,
+      "max": 13785800704,
+      "nondecreasing": true
+    },
+    "memory_available_bytes": {
+      "first": 14973456384,
+      "last": 14973456384,
+      "min": 14973456384,
+      "max": 14973456384,
+      "nondecreasing": true
+    }
+  },
+  "gate_metric_valid": true,
+  "gate_pass": false
+}

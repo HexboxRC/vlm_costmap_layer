@@ -1,9 +1,42 @@
-# Phase 0 status — 2026-09-27
+# Phase 0 status — 2026-10-01
 
 **Gate NOT MET. The first 50-trial soak attempt stopped at trial 25.**
 RTF 0.5 / zero cooldown / seed 20260927 produced 21 usable attempts out
 of 25; trial 25 was an infrastructure failure. No plugin work or data
 campaign has started. No further batch was launched after the failure.
+
+## October 1 diagnostic — realtime step captured
+
+The five harness regression tests passed in 5.582 s. Prior interrupted-soak
+work was committed as `3fbcee3`. A single diagnostic trial at RTF 0.5,
+zero cooldown, seed 20260927 then aborted with `clock_discontinuity`.
+No new soak was started. Teardown was clean; navigation-result fields are
+empty and the attempt is unusable. This validates live boundary capture,
+not harness reliability.
+
+[Diagnostic CSV](evidence/clock_boundary_smoke_20261001.csv),
+[four-clock events](evidence/clock_boundary_smoke_20261001_clocks.csv),
+[logs and intervals](evidence/clock_boundary_smoke_20261001_audit.tar.gz).
+
+At the guard event, the clock deltas were:
+
+| Clock | Delta (seconds) |
+|---|---:|
+| Realtime | -2.297378 |
+| Monotonic | +0.002189 |
+| Boot time | +0.002190 |
+| Raw monotonic | +0.002034 |
+
+This event is a backward realtime step relative to the other clocks, not
+an observed multi-second gap in those elapsed clocks. The responsible
+service or host mechanism is not yet identified. Across startup, monotonic
+advanced 13.990 s while raw monotonic advanced 12.965 s; the substantial
+rate difference also warrants investigation before trusting timing.
+
+Read-only host clock/time-sync diagnostics have been requested from the
+user because the project isolation rule forbids inspecting outside the
+project without permission. No service, clocksource, global configuration,
+Nav2 parameter, gate metric, or clock-discontinuity threshold was changed.
 
 ## Latest result — partial independent-seed soak
 

@@ -85,6 +85,12 @@ custom costmap plugin later, without restructuring.
 
 ## Phase 0: harness reliability (current task; gate NOT MET)
 
+October 1: the single-trial boundary-capture diagnostic aborted on a
+backward realtime step (-2.297378 s), while monotonic/boot/raw advanced
+about 2 ms. Cause remains unidentified. Five regression tests passed and
+live event logging worked. No new soak started; read-only host clock
+investigation awaits permission under isolation. See the latest status.
+
 Latest continuation: the independent-seed 50-trial attempt stopped at
 trial 25, with 21/25 usable (three recovery-gap exclusions and one
 infrastructure failure). The final attempt logged a 233.457 s clock
