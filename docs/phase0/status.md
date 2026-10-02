@@ -1,10 +1,61 @@
 # Phase 0 status — 2026-09-27
 
-**Gate NOT MET. No 50-trial soak has been run. No plugin work was started.**
-Long experiments stopped after repeated host clock discontinuities and DDS
-UDP write errors. The user has been asked whether the host can remain awake
-and on a stable network for approximately 45 minutes. Do not mistake the
-five-trial pilot for the gate or claim a completed cooldown comparison.
+**Gate NOT MET. The first 50-trial soak attempt stopped at trial 25.**
+RTF 0.5 / zero cooldown / seed 20260927 produced 21 usable attempts out
+of 25; trial 25 was an infrastructure failure. No plugin work or data
+campaign has started. No further batch was launched after the failure.
+
+## Latest result — partial independent-seed soak
+
+[CSV](evidence/resumed_raw_soak50.csv),
+[resources](evidence/resumed_raw_soak50_resources.csv),
+[analysis](evidence/resumed_raw_soak50.summary.json),
+[manifest](evidence/resumed_raw_soak50_manifest.json),
+[all launch logs, intervals, and runtime world](evidence/resumed_raw_soak50_audit.tar.gz).
+
+![All 25 attempted trials](evidence/resumed_raw_soak50.png)
+
+- 24 navigation successes; 21 usable attempts (84%). Trial numbers below
+  are one-based; CSV IDs are zero-based.
+- Trials 12, 18, and 21 were excluded at 9.09, 9.17, and 0.20 Hz.
+  They reported 1, 1, and 6 recoveries respectively. Their FollowPath-active
+  diagnostic minima were 33.33, 32.26, and 32.26 Hz. Trial 21 logged failed
+  spin followed by wait. These are retained conservative command-gap
+  exclusions, not direct evidence of slow controller computation.
+- Trial 25 stopped with `clock_discontinuity`, `host_clock_gap_s=233.457`,
+  DDS UDP write failures, and Gazebo/bridge `Network is unreachable` logs.
+  `nav2_result` and `success` are empty, `usable=False`, exit status 1.
+  The launch log confirms `teardown verified clean`.
+- Runner FDs stayed 25, shared memory 335872 bytes / 2 entries. Runner RSS
+  rose from 82.100 MB to 83.341 MB (+1.241 MB), with occasional decreases
+  and plateaus. This is an upward resource trend worth following, not
+  evidence that it caused recovery gaps or the clock/network event.
+- Across all attempted minima: slope -0.4384 Hz/trial, 95% CI
+  [-0.9590, 0.0821], p=0.0948; first/last-ten means 31.292/24.022 Hz
+  (-23.23%). The inspected plot shows intermittent deep gaps, concentrated
+  later in the run. A nonsignificant linear fit does not establish no drift.
+- Calendar duration was 1542.115 seconds, but the clock discrepancy makes
+  throughput unreliable. The analyzer now marks timing invalid and leaves
+  wall duration / usable-trials-per-hour empty for clock-failed batches.
+
+The four command clocks stop at realtime 1790569913.138, just before the
+first DDS error, and do not bracket the later clock discrepancy. Historical
+cause remains unconfirmed. Instrumentation now captures the four clocks at
+navigation start, immediately before/at guard detection, navigation result,
+and trial/teardown boundaries in `<trial>_clocks.csv`, independently of
+command callbacks. This instrumentation was added AFTER the partial soak;
+it cannot recover the missing clocks retroactively. Five regression tests
+passed in 4.470 s, including a clock jump with no commands and simultaneous
+result readiness. Runtime integration of this new event capture remains
+untested until the next diagnostic.
+
+Next step: investigate the recurring clock/network event with the new
+boundary capture before attempting another comparison or soak. Do not
+change the guard, tune Nav2, or relax the gate based on the active metric.
+System-level diagnostics or changes outside this project need the user's
+permission under the isolation rule. Default RTF remains 1.0; 0.5 is not a
+validated experimental protocol. All previous output paths below already
+exist and must not be reused.
 
 ## Continuation audit — 2026-09-27
 

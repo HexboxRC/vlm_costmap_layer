@@ -165,3 +165,28 @@ class LoopRateSegmentationTest(unittest.TestCase):
         finally:
             monitor.destroy_node()
             rclpy.shutdown()
+
+
+class ClockGuardTest(unittest.TestCase):
+    def test_clock_event_recorded_without_commands_even_if_result_arrives(self):
+        from unittest.mock import MagicMock, patch
+        from rclpy.time import Time
+        import run_trials
+
+        monitor = MagicMock()
+        monitor.clock_events = []
+        monitor.get_clock.return_value.now.return_value = Time(nanoseconds=0)
+        handle = monitor._nav_client.send_goal_async.return_value.result.return_value
+        handle.accepted = True
+        handle.get_result_async.return_value.done.return_value = True
+        before = dict(realtime_s=100., monotonic_s=10., boottime_s=10., monotonic_raw_s=9.)
+        after = dict(realtime_s=334., monotonic_s=11., boottime_s=244., monotonic_raw_s=10.)
+        with patch.object(run_trials, 'host_clock_snapshot', side_effect=[before, after]), \
+                patch.object(run_trials.rclpy, 'ok', return_value=True), \
+                patch.object(run_trials.rclpy, 'spin_once'), \
+                patch.object(run_trials.rclpy, 'spin_until_future_complete'):
+            result, _ = TrialMonitor.send_goal_and_wait(monitor, 1., 0., 90., 570.)
+        self.assertEqual(result, 'clock_discontinuity')
+        handle.cancel_goal_async.assert_called_once()
+        self.assertEqual(monitor.clock_events[-2], dict(phase='before_clock_discontinuity', **before))
+        self.assertEqual(monitor.clock_events[-1], dict(phase='clock_discontinuity', **after))

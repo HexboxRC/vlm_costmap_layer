@@ -1,0 +1,89 @@
+{
+  "trials": 25,
+  "usable": 21,
+  "usable_fraction": 0.84,
+  "navigation_successes": 24,
+  "infrastructure_failures": 1,
+  "batch_timing_valid": false,
+  "batch_calendar_elapsed_s": 1542.114931,
+  "batch_wall_s_including_cooldown": null,
+  "usable_trials_per_hour": null,
+  "resources_after_teardown": {
+    "shm_used_bytes": {
+      "first": 335872,
+      "last": 335872,
+      "min": 335872,
+      "max": 335872,
+      "nondecreasing": true
+    },
+    "shm_segment_count": {
+      "first": 2,
+      "last": 2,
+      "min": 2,
+      "max": 2,
+      "nondecreasing": true
+    },
+    "process_count": {
+      "first": 34,
+      "last": 36,
+      "min": 34,
+      "max": 36,
+      "nondecreasing": false
+    },
+    "open_fds_total_visible": {
+      "first": 200,
+      "last": 198,
+      "min": 197,
+      "max": 200,
+      "nondecreasing": false
+    },
+    "fd_unreadable_processes": {
+      "first": 23,
+      "last": 25,
+      "min": 23,
+      "max": 25,
+      "nondecreasing": false
+    },
+    "runner_open_fds": {
+      "first": 25,
+      "last": 25,
+      "min": 25,
+      "max": 25,
+      "nondecreasing": true
+    },
+    "runner_rss_bytes": {
+      "first": 82100224,
+      "last": 83341312,
+      "min": 81981440,
+      "max": 83341312,
+      "nondecreasing": false
+    },
+    "memory_free_bytes": {
+      "first": 13999120384,
+      "last": 14034604032,
+      "min": 13980024832,
+      "max": 14106828800,
+      "nondecreasing": false
+    },
+    "memory_available_bytes": {
+      "first": 14979940352,
+      "last": 15114838016,
+      "min": 14979940352,
+      "max": 15114838016,
+      "nondecreasing": false
+    }
+  },
+  "slope_hz_per_trial": -0.43841538461538465,
+  "slope_95_ci": [
+    -0.9589635793918236,
+    0.08213281016105434
+  ],
+  "linear_trend_p": 0.0948210989551436,
+  "linear_trend_detected_005": false,
+  "first_10_mean_hz": 31.291999999999994,
+  "last_10_mean_hz": 24.022,
+  "first_last_relative_change": -0.23232775150198126,
+  "practical_trend_within_10_percent": false,
+  "gate_metric_valid": true,
+  "gate_pass": false
+}

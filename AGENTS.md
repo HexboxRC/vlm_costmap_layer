@@ -85,6 +85,14 @@ custom costmap plugin later, without restructuring.
 
 ## Phase 0: harness reliability (current task; gate NOT MET)
 
+Latest continuation: the independent-seed 50-trial attempt stopped at
+trial 25, with 21/25 usable (three recovery-gap exclusions and one
+infrastructure failure). The final attempt logged a 233.457 s clock
+discrepancy and DDS/network errors; teardown was clean. Runner FDs stayed
+25; RSS rose 82.10 -> 83.34 MB. No protocol is validated. Four-clock guard
+and boundary snapshots have since been added and regression-tested; no
+new batch followed the failure. See the latest status before resuming.
+
 Do not begin plugin work or the data campaign until a 50-trial soak has
 at least 48 usable trials and no observed loop-rate trend. The current
 checkout has only `semantic_nav_sim`; a second package and its one-way

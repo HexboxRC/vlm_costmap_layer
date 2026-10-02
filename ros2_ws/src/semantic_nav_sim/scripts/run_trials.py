@@ -75,6 +75,16 @@ from rclpy.qos import QoSProfile, DurabilityPolicy
 from rcl_interfaces.srv import GetParameters
 from tf2_ros import Buffer, TransformListener
 
+def host_clock_snapshot():
+    """Read independent host clocks even when command callbacks have stopped."""
+    return {
+        'realtime_s': time.time(),
+        'monotonic_s': time.monotonic(),
+        'boottime_s': time.clock_gettime(time.CLOCK_BOOTTIME),
+        'monotonic_raw_s': time.clock_gettime(time.CLOCK_MONOTONIC_RAW),
+    }
+
+
 # ================= Known obstacle geometry (worlds/arena.sdf) =================
 # (x_min, x_max, y_min, y_max), hand-copied from worlds/arena.sdf's wall_*
 # and glass_wall models (pose +/- half of size). Kept separate from
@@ -305,6 +315,7 @@ class TrialMonitor(Node):
         self._last_cmd_wall_time = None
         self._wall_intervals = []
         self._interval_samples = []
+        self.clock_events = []
         self._active_follow_path_ids = frozenset()
         self._active_segment = 0
         self._last_active_cmd = None
@@ -483,14 +494,23 @@ class TrialMonitor(Node):
         self.goal_accepted = True
         result_future = goal_handle.get_result_async()
         deadline = time.monotonic() + wall_timeout
-        clock_offset = time.time() - time.monotonic()
+        previous_clocks = host_clock_snapshot()
+        clock_offset = previous_clocks['realtime_s'] - previous_clocks['monotonic_s']
+        self.clock_events.append(dict(phase='navigation_start', **previous_clocks))
         sim_start = self.get_clock().now().nanoseconds * 1e-9
         while rclpy.ok():
             rclpy.spin_once(self, timeout_sec=0.2)
-            if result_future.done():
+            clocks = host_clock_snapshot()
+            clock_jump = abs(clocks['realtime_s'] - clocks['monotonic_s'] - clock_offset) > 2.
+            if clock_jump:
+                self.clock_events.extend([
+                    dict(phase='before_clock_discontinuity', **previous_clocks),
+                    dict(phase='clock_discontinuity', **clocks)])
+            previous_clocks = clocks
+            if result_future.done() and not clock_jump:
+                self.clock_events.append(dict(phase='navigation_result', **clocks))
                 break
             sim_elapsed = self.get_clock().now().nanoseconds * 1e-9 - sim_start
-            clock_jump = abs(time.time() - time.monotonic() - clock_offset) > 2.
             if clock_jump or sim_elapsed >= timeout_sec or time.monotonic() > deadline:
                 cancel_future = goal_handle.cancel_goal_async()
                 rclpy.spin_until_future_complete(self, cancel_future, timeout_sec=5.0)
@@ -519,6 +539,7 @@ def load_scenarios(config_path, names_filter):
 def run_one_trial(args, scenario, trial_idx, rng, log_dir):
     trial_wall_start = time.monotonic()
     trial_calendar_start = time.time()
+    clock_events = [dict(phase='trial_start', **host_clock_snapshot())]
     start = scenario['start']
     jx = start['x'] + rng.uniform(-args.jitter_xy, args.jitter_xy)
     jy = start['y'] + rng.uniform(-args.jitter_xy, args.jitter_xy)
@@ -656,12 +677,21 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                 if monitor is not None:
                     row['goal_sent'] = monitor.goal_sent
                     row['goal_accepted'] = monitor.goal_accepted
+                    clock_events.extend(monitor.clock_events)
                     monitor.destroy_node()
             finally:
                 rclpy.try_shutdown()
                 monitor = None
                 gc.collect()
-                teardown_stack(launch_proc, log)
+                clock_events.append(dict(phase='before_teardown', **host_clock_snapshot()))
+                try:
+                    teardown_stack(launch_proc, log)
+                finally:
+                    clock_events.append(dict(phase='after_teardown', **host_clock_snapshot()))
+                    with open(os.path.join(log_dir, trial_name + '_clocks.csv'), 'w') as stream:
+                        writer = csv.DictWriter(stream, fieldnames=list(clock_events[0]))
+                        writer.writeheader()
+                        writer.writerows(clock_events)
 
         row['total_wall_s'] = round(time.monotonic()-trial_wall_start, 3)
         gap = time.time()-trial_calendar_start-row['total_wall_s']

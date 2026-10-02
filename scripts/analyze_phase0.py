@@ -40,8 +40,13 @@ def main():
             resources = list(csv.DictReader(stream))
         elapsed = (datetime.fromisoformat(resources[-1]['timestamp']) -
                    datetime.fromisoformat(resources[0]['timestamp'])).total_seconds()
-        report['batch_wall_s_including_cooldown'] = elapsed
-        report['usable_trials_per_hour'] = float(usable.sum()) / elapsed * 3600
+        timing_valid = elapsed > 0 and not any(row.get('error') == 'clock_discontinuity'
+                                               for row in rows)
+        report['batch_timing_valid'] = timing_valid
+        report['batch_calendar_elapsed_s'] = elapsed
+        report['batch_wall_s_including_cooldown'] = elapsed if timing_valid else None
+        report['usable_trials_per_hour'] = (float(usable.sum()) / elapsed * 3600
+                                           if timing_valid else None)
         report['resources_after_teardown'] = {}
         for key in list(resources[0])[3:]:
             values = [int(row[key]) for row in resources[1:]]

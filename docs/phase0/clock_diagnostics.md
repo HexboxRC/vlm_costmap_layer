@@ -38,3 +38,20 @@ above two seconds is conservatively classified as infrastructure failure
 and stops the batch; this is data-quality protection, not a claim about
 which clock or host component failed. If it recurs, compare the four clock
 deltas before changing the guard or proposing system-level mitigation.
+
+## Recurrence during independent-seed soak
+
+`resumed_raw_soak50.csv` stopped on attempt 25 with a 233.457 s clock
+discrepancy and DDS UDP / Gazebo network-unreachable errors. Teardown was
+verified clean. The 729 command intervals cover only 36.552 s before the
+interruption; the largest realtime-minus-monotonic adjacent delta in that
+window was about 0.000251 s. Last command realtime: 1790569913.138. Those
+samples do not straddle the discrepancy, so boot/raw clocks still cannot
+identify its cause. The earlier awake-host statement must not be replaced
+with an unsupported claim of sleep.
+
+The runner now also writes per-trial `_clocks.csv` event snapshots,
+including both sides of navigation guard detection and trial/teardown
+boundaries. These do not depend on command messages arriving. A regression
+test verifies event capture with no commands and a simultaneously ready
+navigation result. No additional batch has been run since this failure.
