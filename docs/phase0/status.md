@@ -5,6 +5,53 @@ RTF 0.5 / zero cooldown / seed 20260927 produced 21 usable attempts out
 of 25; trial 25 was an infrastructure failure. No plugin work or data
 campaign has started. No further batch was launched after the failure.
 
+
+## Authorized read-only host investigation — October 1
+
+The user approved host clock/time-sync inspection. Raw command output,
+clock probes, and the modes=0 `adjtimex` reader source are archived in
+[evidence/host_clock_20261001.tar.gz](evidence/host_clock_20261001.tar.gz).
+No clock, service, clocksource, or global configuration was changed.
+
+Findings:
+
+- Active clocksource: `tsc`; available alternatives include the Hyper-V
+  shared-page and MSR clocks. This alone is not evidence of a bad clocksource.
+- `systemd-timesyncd` is active. Queried chrony/ntp/ntpsec units were not
+  loaded; the targeted process query found only timesyncd.
+- NTP polls every 32 seconds; observed offset was -2.288632 s. There were
+  no timesyncd journal entries in the incident window, so logs do not
+  directly identify the writer of the recorded step.
+- A 30-s monotonic probe with no ROS/Gazebo running observed another
+  -2.259 s realtime/monotonic discontinuity.
+- A subsequent 40-s probe recorded a -2.303840 s step alongside NTP
+  packet count advancing from 2288 to 2289. This is strong evidence that
+  NTP correction contributes to the backward steps, not a direct syscall
+  attribution or an explanation of the underlying clock-rate adjustment.
+- Monotonic elapsed time advanced 1.078807 times raw monotonic in that
+  probe. Read-only `adjtimex(modes=0)` samples found `tick` varying from
+  10716 to 10857 microseconds, with five distinct values. `SC_CLK_TCK=100`.
+  This indicates a substantial, changing clock-rate adjustment. Its writer
+  remains unidentified; do not assume resetting it once would stay fixed.
+
+The [systemd v255 implementation](https://github.com/systemd/systemd/blob/v255/src/timesync/timesyncd-manager.c)
+steps offsets beyond 0.4 seconds and does not set ADJ_TICK in its adjustment
+routine. The [adjtimex interface](https://man7.org/linux/man-pages/man2/adjtimex.2.html)
+documents modes=0 queries and tick adjustment. These support investigating
+the tick writer before changing services or selecting another clocksource.
+The [kernel Hyper-V clock documentation](https://cdn.kernel.org/doc/html/latest/virt/hyperv/clocks.html)
+also explains why TSC may legitimately be selected; no clocksource change
+is justified solely by its name.
+
+Next diagnostic: an isolated 40-second trace of clock-setting syscall
+callers. `scripts/trace_clock_writers.py` is prepared and syntax/CLI checked,
+but NOT executed. Access to tracefs was denied as the current user, so this
+requires root and explicit approval for temporary tracing outside the
+project. It enables only four clock-setting syscall entry events in its
+own trace instance, writes the trace inside the project, and removes that
+instance afterward. It changes no clocks/services and installs nothing.
+No further simulation batch is justified while the recurring steps persist.
+
 ## October 1 diagnostic — realtime step captured
 
 The five harness regression tests passed in 5.582 s. Prior interrupted-soak
