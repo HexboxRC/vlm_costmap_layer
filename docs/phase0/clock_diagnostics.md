@@ -132,3 +132,33 @@ sudo python3 scripts/trace_clock_writers.py --seconds 40 \
 
 Then inspect the saved trace before choosing a mitigation. Phase 0 remains
 unvalidated; no additional simulation batch was started.
+
+## October 2 trace result: two clock syscall callers
+
+The user ran the approved trace successfully. The saved trace has 21/21
+entries: 20 `clock_adjtime(CLOCK_REALTIME, ...)` calls from `chronyd-186`
+and one from `systemd-timesyn-452`. It contains syscall entry arguments
+(pointer addresses), not adjustment modes or return codes, so individual
+calls cannot yet be classified as reads, successful writes, or failures.
+
+[Raw trace](evidence/clock_writers_20261002.txt).
+[Follow-up service/process/time-sync queries](evidence/clock_followup_20261002.tar.gz).
+
+The distribution still reports only timesyncd (local PID 184) and no chrony
+unit/process. Trace PIDs 186/452 were absent in the visible PID namespace.
+A WSL-level chronyd is a plausible explanation, supported by a comparable
+[WSL report](https://github.com/microsoft/WSL/issues/10024), but its origin
+has not been independently confirmed here. The earlier process query did
+not establish absence of another time service across the shared kernel.
+
+Proposed controlled diagnostic: stop only this distribution's timesyncd
+for 96 seconds, recording clocks and read-only kernel adjustment values
+before/during/after, then automatically restart it. The prepared
+`scripts/probe_single_timesync.py` uses 20 s before, 96 s stopped, and 20 s
+after. It restores the service on ordinary exceptions, Ctrl-C, and SIGTERM;
+SIGKILL or host failure cannot guarantee restoration. Manual recovery is
+`sudo systemctl start systemd-timesyncd.service`. It does not disable the
+service or change clock parameters or configuration. Syntax/CLI checked;
+not executed. Separate user approval is required for this system-wide
+service intervention, even though trace and read-only diagnostics were
+already authorized. No simulation batch has been resumed.

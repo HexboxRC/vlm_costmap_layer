@@ -1,0 +1,33 @@
+# tracer: nop
+#
+# entries-in-buffer/entries-written: 21/21   #P:16
+#
+#                                _-----=> irqs-off/BH-disabled
+#                               / _----=> need-resched
+#                              | / _---=> hardirq/softirq
+#                              || / _--=> preempt-depth
+#                              ||| / _-=> migrate-disable
+#                              |||| /     delay
+#           TASK-PID     CPU#  |||||  TIMESTAMP  FUNCTION
+#              | |         |   |||||     |         |
+         chronyd-186     [006] ..... 109094.121638: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db4c0)
+         chronyd-186     [006] ..... 109094.122413: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db140)
+         chronyd-186     [006] ..... 109094.122419: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db150)
+         chronyd-186     [006] ..... 109094.122432: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db240)
+         chronyd-186     [006] ..... 109101.758545: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db4c0)
+         chronyd-186     [006] ..... 109101.758582: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db140)
+         chronyd-186     [006] ..... 109101.758588: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db150)
+         chronyd-186     [006] ..... 109101.758601: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db240)
+ systemd-timesyn-452     [003] ..... 109108.577644: sys_clock_adjtime(which_clock: 0, utx: 0x7ffca4f8ecb0)
+         chronyd-186     [006] ..... 109111.729371: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db4c0)
+         chronyd-186     [006] ..... 109111.729411: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db140)
+         chronyd-186     [006] ..... 109111.729419: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db150)
+         chronyd-186     [006] ..... 109111.729435: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db240)
+         chronyd-186     [014] ..... 109119.433285: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db4c0)
+         chronyd-186     [014] ..... 109119.433358: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db140)
+         chronyd-186     [014] ..... 109119.433362: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db150)
+         chronyd-186     [014] ..... 109119.433373: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db240)
+         chronyd-186     [014] ..... 109127.198579: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db4c0)
+         chronyd-186     [014] ..... 109127.198692: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db140)
+         chronyd-186     [014] ..... 109127.198699: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db150)
+         chronyd-186     [014] ..... 109127.198709: sys_clock_adjtime(which_clock: 0, utx: 0x7ffeed2db240)

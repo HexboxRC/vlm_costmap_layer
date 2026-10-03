@@ -91,8 +91,9 @@ about 2 ms. Cause remains unidentified. Five regression tests passed and
 live event logging worked. No new soak started. Authorized read-only host diagnostics found repeated
 backward steps alongside NTP updates and a changing kernel tick adjustment
 (10716–10857 us); its writer is unknown. A targeted root-only clock syscall
-trace was approved October 2, but sudo requires local password
-authentication; it did not run. No system settings were changed. See the latest status.
+trace was run by the user October 2: chronyd and timesyncd both called
+clock_adjtime. A temporary timesyncd-stop comparison is prepared but
+requires separate approval; it has not run. No system settings were changed. See the latest status.
 
 Latest continuation: the independent-seed 50-trial attempt stopped at
 trial 25, with 21/25 usable (three recovery-gap exclusions and one
