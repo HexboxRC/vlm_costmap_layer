@@ -1,10 +1,19 @@
-# Phase 0 status — 2026-10-01
+# Phase 0 status — 2026-10-02
 
 **Gate NOT MET. The first 50-trial soak attempt stopped at trial 25.**
 RTF 0.5 / zero cooldown / seed 20260927 produced 21 usable attempts out
 of 25; trial 25 was an infrastructure failure. No plugin work or data
 campaign has started. No further batch was launched after the failure.
 
+
+## October 2: approved trace needs local sudo authentication
+
+The user approved the 40-second clock-writer trace, but `sudo -n` returned
+`sudo: a password is required`. No trace ran and no tracing setup was
+created. Run the command in [clock diagnostics](clock_diagnostics.md) from
+a local terminal, then inspect its project-local output. No further
+permission is needed for the approved trace; terminal authentication is
+the remaining prerequisite. No new batch was started.
 
 ## Authorized read-only host investigation — October 1
 

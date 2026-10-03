@@ -112,3 +112,23 @@ project. It enables only four clock-setting syscall entry events in its
 own trace instance, writes the trace inside the project, and removes that
 instance afterward. It changes no clocks/services and installs nothing.
 No further simulation batch is justified while the recurring steps persist.
+
+## October 2: trace approved, execution blocked by sudo authentication
+
+The user approved the targeted 40-second root-only trace. Attempting
+`sudo -n python3 scripts/trace_clock_writers.py --seconds 40 --out
+results/phase0/clock_writers_20261002.txt` exited 1 with
+`sudo: a password is required`. The script did not start; no trace instance
+was created and no system settings changed. This is an authentication
+blocker, not a request for additional authorization.
+
+Run in a project terminal (enter the password only at sudo's terminal prompt):
+
+```bash
+cd /home/ketan/semantic-nav-ros
+sudo python3 scripts/trace_clock_writers.py --seconds 40 \
+  --out results/phase0/clock_writers_20261002.txt
+```
+
+Then inspect the saved trace before choosing a mitigation. Phase 0 remains
+unvalidated; no additional simulation batch was started.
