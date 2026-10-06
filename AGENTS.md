@@ -92,8 +92,11 @@ live event logging worked. No new soak started. Authorized read-only host diagno
 backward steps alongside NTP updates and a changing kernel tick adjustment
 (10716–10857 us); its writer is unknown. A targeted root-only clock syscall
 trace was run by the user October 2: chronyd and timesyncd both called
-clock_adjtime. A temporary timesyncd-stop comparison is prepared but
-requires separate approval; it has not run. No system settings were changed. See the latest status.
+clock_adjtime. The user ran the temporary 96-second timesyncd-stop comparison October 5.
+Saved logs confirm successful stop/restart. Clock steps fell from eight before
+to one early in the stopped phase, then seven after restart; tick continued
+changing while stopped (11000 -> 10084 -> 9167 us). Clock stability and the
+other writer remain unresolved. No new batch is justified. See the latest status.
 
 Latest continuation: the independent-seed 50-trial attempt stopped at
 trial 25, with 21/25 usable (three recovery-gap exclusions and one

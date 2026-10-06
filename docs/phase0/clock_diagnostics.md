@@ -162,3 +162,53 @@ service or change clock parameters or configuration. Syntax/CLI checked;
 not executed. Separate user approval is required for this system-wide
 service intervention, even though trace and read-only diagnostics were
 already authorized. No simulation batch has been resumed.
+
+## October 5: temporary timesyncd-stop result
+
+The user ran `scripts/probe_single_timesync.py`; all three phases are saved
+in `results/phase0/single_timesync_20261005`. The action log records
+`stop: exit=0` and `start: exit=0`, followed by 80 restored-phase samples.
+This confirms the restart command succeeded during the diagnostic, not a
+fresh service-status check. No new host changes or simulation runs were
+performed while analyzing these files.
+
+[Raw clocks and action log](evidence/single_timesync_20261005.tar.gz).
+[Computed summary and individual events](evidence/single_timesync_20261005.summary.json).
+
+| Phase | Samples | Monotonic span (s) | Raw span (s) | Clock steps >0.1 s | Tick range (us) |
+|---|---:|---:|---:|---:|---:|
+| Before | 76 | 19.819 | 18.017 | 8 | 11000 |
+| Timesyncd stopped | 371 | 95.877 | 94.488 | 1 | 9167–11000 |
+| Restored | 80 | 19.955 | 21.349 | 7 | 9167–10126 |
+
+Spans are first-to-last sample within each phase. Steps are adjacent
+realtime deltas minus monotonic deltas; 0.1 s is an analysis threshold,
+not a change to the runner's two-second infrastructure guard. Boundary
+pairs were checked too; none exceeded 0.1 s.
+
+Before stopping, alternating forward/backward steps reached +5.598/-6.102 s.
+While stopped, one +5.601122 s step occurred 3.199 monotonic seconds after
+the first stopped-phase sample. At that event, realtime advanced 5.864591 s,
+monotonic 0.263469 s, boot 0.263468 s, and raw 0.239516 s. No further step
+above 0.1 s occurred in the remaining sampled stopped interval. Tick changed
+from 11000 to 10084 at 46.834 s and to 9167 at 63.101 s within that phase.
+After restoration, steps returned, reaching -7.191/+6.402 s.
+
+The reduction during the stop and recurrence after restart support a
+contribution from this distribution's timesyncd to the repeated steps.
+However, the residual early step and continued tick changes show this
+short intervention did not establish stable clocks or identify the other
+writer. The late stopped-phase tick was still 9167 us. Do not interpret
+the phase-average monotonic/raw ratio (1.0147) as clock-rate stability:
+it averages changing rates. The earlier chronyd trace makes chronyd a
+candidate, but these data do not attribute a successful write to it or
+prove where it runs. The early residual step also does not establish that
+steps would recur throughout a longer stopped interval.
+
+**Gate remains NOT MET.** Do not resume a soak or select an RTF based on
+this probe. The next diagnostic should identify successful clock writes,
+including adjustment modes/tick values and syscall return codes, and
+correlate them with four-clock samples. The previous entry-only trace
+cannot do that. Any new tracing scope or longer service intervention must
+be explicitly authorized under the project isolation rule; do not silently
+extend the completed 96-second stop or change clock parameters.
