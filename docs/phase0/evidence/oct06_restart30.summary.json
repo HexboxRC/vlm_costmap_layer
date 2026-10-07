@@ -1,0 +1,107 @@
+{
+  "trials": 30,
+  "usable": 30,
+  "usable_fraction": 1.0,
+  "navigation_successes": 30,
+  "infrastructure_failures": 0,
+  "batch_timing_valid": false,
+  "batch_calendar_elapsed_s": 2360.01969,
+  "batch_wall_s_including_cooldown": null,
+  "usable_trials_per_hour": null,
+  "resources_after_teardown": {
+    "shm_used_bytes": {
+      "first": 335872,
+      "last": 335872,
+      "min": 335872,
+      "max": 335872,
+      "nondecreasing": true
+    },
+    "shm_segment_count": {
+      "first": 2,
+      "last": 2,
+      "min": 2,
+      "max": 2,
+      "nondecreasing": true
+    },
+    "process_count": {
+      "first": 54,
+      "last": 43,
+      "min": 41,
+      "max": 54,
+      "nondecreasing": false
+    },
+    "open_fds_total_visible": {
+      "first": 267,
+      "last": 182,
+      "min": 182,
+      "max": 267,
+      "nondecreasing": false
+    },
+    "fd_unreadable_processes": {
+      "first": 31,
+      "last": 31,
+      "min": 29,
+      "max": 31,
+      "nondecreasing": false
+    },
+    "runner_open_fds": {
+      "first": 26,
+      "last": 26,
+      "min": 26,
+      "max": 26,
+      "nondecreasing": true
+    },
+    "runner_rss_bytes": {
+      "first": 64679936,
+      "last": 64679936,
+      "min": 64679936,
+      "max": 64679936,
+      "nondecreasing": true
+    },
+    "memory_free_bytes": {
+      "first": 12993830912,
+      "last": 12933611520,
+      "min": 11750387712,
+      "max": 12993830912,
+      "nondecreasing": false
+    },
+    "memory_available_bytes": {
+      "first": 15059238912,
+      "last": 15135485952,
+      "min": 13941313536,
+      "max": 15151783936,
+      "nondecreasing": false
+    }
+  },
+  "slope_hz_per_trial": 0.007038932146829789,
+  "slope_95_ci": [
+    -0.06995242694706347,
+    0.08403029124072303
+  ],
+  "linear_trend_p": 0.8527950548691056,
+  "linear_trend_detected_005": false,
+  "first_10_mean_hz": 32.542,
+  "last_10_mean_hz": 32.81699999999999,
+  "first_last_relative_change": 0.00845061766332713,
+  "practical_trend_within_10_percent": true,
+  "gate_metric_valid": true,
+  "gate_policy": "oct06_30_trials_90_percent",
+  "gate_pass": true,
+  "protocol": {
+    "rtf_target": [
+      "0.5"
+    ],
+    "cooldown_sec": [
+      "0.0"
+    ],
+    "max_linear_speed": [
+      "0.25"
+    ],
+    "runner_restart_policy": [
+      "per_trial"
+    ],
+    "clock_policy": [
+      "sim_time_host_steps_accepted_v1"
+    ]
+  }
+}

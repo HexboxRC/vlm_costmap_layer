@@ -3,6 +3,44 @@
 **Current gate: at least 27 usable attempts in a completed 30-trial batch.**
 The former 48/50 gate is superseded by the October 6 user decision.
 
+## October 6 harness target met: 30/30 usable
+
+[CSV](evidence/oct06_restart30.csv), [resources](evidence/oct06_restart30_resources.csv),
+[summary](evidence/oct06_restart30.summary.json), [manifest](evidence/oct06_restart30_manifest.json),
+[raw logs, intervals, sim-time checks and runtime parameters](evidence/oct06_restart30_audit.tar.gz).
+
+![All 30 attempted trials](evidence/oct06_restart30.png)
+
+`bash scripts/phase0.sh --scenario grass_patch --trials 30 --seed 20261006
+--out results/phase0/oct06_restart30.csv` exited 0. All 30 attempts were
+usable and successful without collision. Zero infrastructure failures;
+30/30 clean teardowns and live simulated-time checks. The original minimum
+command-gap metric and 18 Hz cutoff were preserved: minima 27.03–35.71 Hz.
+First/last-ten means 32.542/32.817 Hz (+0.85%); plot inspection found no
+sustained decline. This satisfies the new 27/30 target without reinstating
+a statistical no-trend gate.
+
+Every attempt ran in a distinct worker PID. Workers ended with 29 FDs and
+80,687,104–81,186,816 bytes RSS. The parent retained 26 FDs and 64,679,936
+bytes RSS after every teardown. Shared memory remained 335872 bytes/two
+entries. Restarting bounds worker lifetime; this is not a claim that the
+underlying resource-growth cause was diagnosed. Plugin compilation occurred
+during early trials, as requested; the batch is harness validation rather
+than a controlled paper comparison.
+
+Simulated navigation durations: 30.822–31.810 s. Calendar elapsed and
+throughput are withheld from performance interpretation under the accepted
+host-clock limitation. The manifest pins harness commit `c2992bc` and source
+hashes. Common settings are now recorded as validated in AGENTS.md: RTF 0.5,
+zero cooldown, per-trial worker restart, 0.25 m/s linear cap, 90 sim seconds.
+Use those unchanged in every experimental condition.
+
+The earlier [smoke](evidence/oct06_restart_smoke.csv) remains **0/1 usable**
+(7.52 Hz), despite successful navigation; its exclusion is not hidden.
+The new 30-trial batch uses the predeclared full denominator. This result
+establishes the control-scenario harness target, not glass or semantic
+performance. Plugin development proceeds now.
+
 ## October 6 implementation and first smoke
 
 Time synchronization investigation is closed by user decision. All 18 checked

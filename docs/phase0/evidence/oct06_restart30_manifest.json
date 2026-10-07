@@ -1,0 +1,35 @@
+{
+  "config": "/home/ketan/semantic-nav-ros/ros2_ws/install/semantic_nav_sim/share/semantic_nav_sim/config/scenarios.yaml",
+  "scenario": [
+    "grass_patch"
+  ],
+  "trials": 30,
+  "jitter_xy": 0.1,
+  "jitter_yaw": 0.1,
+  "timeout": 90.0,
+  "rtf": 0.5,
+  "startup_timeout": 45.0,
+  "loop_rate_threshold": 18.0,
+  "collision_margin": 0.22,
+  "seed": 20261006,
+  "max_linear_speed": 0.25,
+  "cooldown_sec": 0.0,
+  "out": "results/phase0/oct06_restart30.csv",
+  "world_path": "/home/ketan/semantic-nav-ros/results/phase0/logs_20261006_211325_349799/arena.sdf",
+  "params_path": "/home/ketan/semantic-nav-ros/results/phase0/logs_20261006_211325_349799/nav2_trial_params.yaml",
+  "runner_restart_policy": "per_trial",
+  "clock_policy": "sim_time_host_steps_accepted_v1",
+  "params_sha256": "60cce0287f39b96f92c0915889e94ab1fb787c6f416b25dfcbe1e0e7fa3d2521",
+  "git_commit": "c2992bceaa7a4557e07baa27093e2be6f87d2722",
+  "source_sha256": {
+    "scripts/run_trials.py": "2b8aa8dc6800f425cbe72bd55b957ca1ab563212c2dc39223afaac8182abaec7",
+    "scripts/seed_initial_pose.py": "004b87df627e008494adc8703bac9fd1625c7c37a0a834af8865179b2266b420",
+    "config/nav2_params.yaml": "299f9002d6dcfbf661e532c99f32dda1766eab3afa3ab71a52378d80e7ef956f",
+    "config/scenarios.yaml": "11fc9cb4de584d461e8a8c862a196531cd9401540026ac555f8764d6fbab9f7a",
+    "launch/nav2_bringup.launch.py": "8fc05ae367e8c98dcf2c0b9ccd6a9bcb817a4c0e5d0eaeaaf3a33ee7bee15c89",
+    "launch/robot_bringup.launch.py": "21fc292ec4cfc0123da42817fd71b06ab04bd7cc45350e94a918ee92e9306322",
+    "launch/bringup_all.launch.py": "e709cc261c907821a6710ce7fbd999effc7e5f012721b839002693b7a1ddad30",
+    "worlds/arena.sdf": "be58dd8accc4fbd086b3f771ef11f1d20b2bcabea2ffbf1ecb90ca9b69a9a44e",
+    "urdf/semantic_nav_robot.urdf.xacro": "8c5610e681efdac4405d5afda4fdfa5737d614e182c6c5a518f76340943091a7"
+  }
+}

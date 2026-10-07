@@ -1,0 +1,96 @@
+{
+  "trials": 1,
+  "usable": 0,
+  "usable_fraction": 0.0,
+  "navigation_successes": 1,
+  "infrastructure_failures": 0,
+  "batch_timing_valid": false,
+  "batch_calendar_elapsed_s": 814.25323,
+  "batch_wall_s_including_cooldown": null,
+  "usable_trials_per_hour": null,
+  "resources_after_teardown": {
+    "shm_used_bytes": {
+      "first": 335872,
+      "last": 335872,
+      "min": 335872,
+      "max": 335872,
+      "nondecreasing": true
+    },
+    "shm_segment_count": {
+      "first": 2,
+      "last": 2,
+      "min": 2,
+      "max": 2,
+      "nondecreasing": true
+    },
+    "process_count": {
+      "first": 41,
+      "last": 41,
+      "min": 41,
+      "max": 41,
+      "nondecreasing": true
+    },
+    "open_fds_total_visible": {
+      "first": 199,
+      "last": 199,
+      "min": 199,
+      "max": 199,
+      "nondecreasing": true
+    },
+    "fd_unreadable_processes": {
+      "first": 29,
+      "last": 29,
+      "min": 29,
+      "max": 29,
+      "nondecreasing": true
+    },
+    "runner_open_fds": {
+      "first": 26,
+      "last": 26,
+      "min": 26,
+      "max": 26,
+      "nondecreasing": true
+    },
+    "runner_rss_bytes": {
+      "first": 64765952,
+      "last": 64765952,
+      "min": 64765952,
+      "max": 64765952,
+      "nondecreasing": true
+    },
+    "memory_free_bytes": {
+      "first": 13250998272,
+      "last": 13250998272,
+      "min": 13250998272,
+      "max": 13250998272,
+      "nondecreasing": true
+    },
+    "memory_available_bytes": {
+      "first": 15158071296,
+      "last": 15158071296,
+      "min": 15158071296,
+      "max": 15158071296,
+      "nondecreasing": true
+    }
+  },
+  "gate_metric_valid": true,
+  "gate_policy": "oct06_30_trials_90_percent",
+  "gate_pass": false,
+  "protocol": {
+    "rtf_target": [
+      "0.5"
+    ],
+    "cooldown_sec": [
+      "0.0"
+    ],
+    "max_linear_speed": [
+      "0.25"
+    ],
+    "runner_restart_policy": [
+      "per_trial"
+    ],
+    "clock_policy": [
+      "sim_time_host_steps_accepted_v1"
+    ]
+  }
+}

@@ -119,7 +119,7 @@ or unacknowledged goals, stalled simulation) MUST remain distinct from
 navigation failures in the CSV, with empty navigation-result/success
 fields. This is permanent methodology. Retain raw intervals and resources.
 
-Common protocol selected for this validation: **RTF 0.5, zero cooldown,
+Validated common protocol (30/30 usable on October 6): **RTF 0.5, zero cooldown,
 a fresh runner process per trial, 0.25 m/s speed cap, 90 simulated seconds
 navigation timeout**. These settings MUST be identical across baseline,
 ground-truth semantic, and cloud-VLM conditions. Record any change before
@@ -130,9 +130,12 @@ rather than diagnosing a leak. Stop on unsafe teardown/orphan failures;
 record ordinary infrastructure failures and proceed only after clean teardown.
 
 Start plugin development while unattended batches run. Do not wait for a
-perfect harness or reinstate the old 50-trial gate. Prior latest long-batch
-yield was 21/25 (84%); the prior five-trial pilot was 5/5. Neither validates
-the new low-speed/restart protocol. See docs/phase0/status.md for new evidence.
+perfect harness or reinstate the old 50-trial gate. October 6 validation completed 30/30 usable, 30 navigation successes,
+zero infrastructure failures, and 30 clean teardowns on grass_patch.
+Minima: 27.03–35.71 Hz; all 30 workers had different PIDs and 29 FDs.
+A prior smoke trial succeeded but was excluded at 7.52 Hz; it is retained.
+This validates the harness target on the control scenario, not semantic
+efficacy or all glass outcomes. See docs/phase0/status.md for evidence.
 
 Use `bash scripts/phase0.sh ...` from the project root. It manually sources
 `env.sh` and confines ROS/Gazebo logs, caches, and scratch files to
