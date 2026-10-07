@@ -40,9 +40,8 @@ throughout — no time to debug source builds.
 Eventual goal: a custom `nav2_costmap_2d::Layer` plugin that writes
 graduated semantic cost values (0-254) into the costmap instead of binary
 occupancy, so a planner can treat a puddle differently from a wall and
-can avoid glass that LiDAR passes through but a camera sees. **That
-plugin is future work** — the current build phase is simulation +
-baseline (stock Nav2, no tuning) only.
+can avoid glass that LiDAR passes through but a camera sees. Plugin implementation is now on the critical path and proceeds alongside
+harness validation (October 6 decision below).
 
 Core experimental mechanism: a glass wall with collision geometry (robot
 physically hits it) but zero LiDAR returns (`visibility_mask` on the
@@ -65,7 +64,7 @@ camera pixels in later work — so TF and camera_info must be correct now.
   layer not worth the debugging risk in a 3-week window).
 - Nav2 bringup is stock/default config (voxel/obstacle + inflation
   layers, MPPI controller) — this is the experimental control condition
-  and must not be tuned.
+  with only the explicitly authorized common speed cap below.
 
 ## Package layout
 
@@ -83,78 +82,60 @@ custom costmap plugin later, without restructuring.
 - Commit to git at each working milestone.
 
 
-## Phase 0: harness reliability (current task; gate NOT MET)
+## October 6 decision — current instructions (supersedes historical gates)
 
-October 1: the single-trial boundary-capture diagnostic aborted on a
-backward realtime step (-2.297378 s), while monotonic/boot/raw advanced
-about 2 ms. Cause remains unidentified. Five regression tests passed and
-live event logging worked. No new soak started. Authorized read-only host diagnostics found repeated
-backward steps alongside NTP updates and a changing kernel tick adjustment
-(10716–10857 us); its writer is unknown. A targeted root-only clock syscall
-trace was run by the user October 2: chronyd and timesyncd both called
-clock_adjtime. The user ran the temporary 96-second timesyncd-stop comparison October 5.
-Saved logs confirm successful stop/restart. Clock steps fell from eight before
-to one early in the stopped phase, then seven after restart; tick continued
-changing while stopped (11000 -> 10084 -> 9167 us). Clock stability and the
-other writer remain unresolved. No new batch is justified. See the latest status.
+Submission is October 27; harness target is due October 9. Speed takes
+priority over exhaustive diagnosis. Time-box work off the critical path
+to one hour; notify the user before exceeding it and use a documented
+workaround rather than extending an investigation.
 
-Latest continuation: the independent-seed 50-trial attempt stopped at
-trial 25, with 21/25 usable (three recovery-gap exclusions and one
-infrastructure failure). The final attempt logged a 233.457 s clock
-discrepancy and DDS/network errors; teardown was clean. Runner FDs stayed
-25; RSS rose 82.10 -> 83.34 MB. No protocol is validated. Four-clock guard
-and boundary snapshots have since been added and regression-tested; no
-new batch followed the failure. See the latest status before resuming.
+Paper scope is simulation-only: the graduated semantic costmap layer,
+the glass-wall benchmark, and a ground-truth versus cloud-VLM ablation.
+DROPPED: local lightweight backend on Pi and hardware validation. Both
+belong in Future Work; do not implement them for this submission.
 
-Do not begin plugin work or the data campaign until a 50-trial soak has
-at least 48 usable trials and no observed loop-rate trend. The current
-checkout has only `semantic_nav_sim`; a second package and its one-way
-dependency do not exist yet.
+STOP time-synchronization investigation. Do not build synchronization
+infrastructure, trace clock writers, or modify host time services. Check
+once that Nav2, the bridge, and robot_state_publisher use simulated time
+and subscribe to an advancing /clock. Remaining host-clock disagreement
+is accepted as a known paper limitation, not a reason to block trials.
+Host time and throughput are not reliable scientific timing measures;
+report simulated navigation duration. Existing host-clock observations
+may be logged but must not abort a valid simulated-time trial. A stalled
+simulation still needs a bounded wall watchdog.
 
-Use `bash scripts/phase0.sh ...` from the project root for batch runs.
-It manually sources `env.sh` and confines ROS/Gazebo logs, caches, and
-scratch files to `results/phase0/runtime`. ROS/Gazebo cannot run inside
-the Codex network/PID sandbox; the runner needs normal host execution.
-Do not install anything or change global shell configuration.
+Accepted mitigations: low approach speed (0.25 m/s maximum linear speed,
+forward and reverse) in every condition; latest-available TF for project
+lookups and existing Nav2 transform tolerances. This is an explicitly
+authorized common speed cap on stock Nav2; do not tune other controller
+parameters to improve yield. Preserve the 1 ms physics step.
 
-Resource snapshots are written at batch start and after every teardown
-in `<output>_resources.csv`. FD totals are limited to accessible processes;
-the inaccessible count is explicit. The 15-trial diagnostic found stable
-shared memory, stable runner FDs after initialization, fluctuating process
-counts, and monotonically increasing runner RSS (81.13 -> 96.55 MB).
-Explicit action-client/node cleanup and collection were followed by a
-five-trial run with RSS 81.55–81.74 MB and constant 25 runner FDs. No DDS
-segments were deleted and no daemon workaround was applied. Grouped
-runner restarts have not been needed/tested at this point.
+Harness acceptance replaces the former 48/50 soak/no-trend gate:
+**at least 27 usable attempts in a completed 30-trial batch (90%)**.
+Retain every attempt, original all-command-gap metric and 18 Hz cutoff;
+report navigation outcomes separately from command-gap exclusions.
+Infrastructure failures (including no goal, inactive lifecycle, rejected
+or unacknowledged goals, stalled simulation) MUST remain distinct from
+navigation failures in the CSV, with empty navigation-result/success
+fields. This is permanent methodology. Retain raw intervals and resources.
 
-Initial pose is published only after AMCL activation and acknowledged
-localization. Goals require an active bt_navigator, a discoverable
-NavigateToPose action server, localization, and TF. Infrastructure errors
-abort the batch, have `usable=False`, and leave navigation results empty.
-Never count a no-goal attempt as a navigation outcome. Clock discontinuities
-above two seconds also invalidate the attempt as infrastructure failure.
+Common protocol selected for this validation: **RTF 0.5, zero cooldown,
+a fresh runner process per trial, 0.25 m/s speed cap, 90 simulated seconds
+navigation timeout**. These settings MUST be identical across baseline,
+ground-truth semantic, and cloud-VLM conditions. Record any change before
+rerunning validation; do not compare arms with different settings.
+Reduced RTF does not preserve controller timing relative to physics.
+Use the per-process restart workaround for potential accumulated resources
+rather than diagnosing a leak. Stop on unsafe teardown/orphan failures;
+record ordinary infrastructure failures and proceed only after clean teardown.
 
-**Provisional soak candidate: RTF 0.5 / zero cooldown / no runner restarts**,
-seed 20260927, using the original all-command-gap gate metric. A fresh
-five-trial check passed 5/5; later recovered comparison evidence gave
-0/5 usable at RTF 1.0 / 10 s cooldown and 3/5 at RTF 0.5 / no cooldown.
-**Final RTF selection is still pending soak validation.** RTF 0.5 / no cooldown passed a five-trial
-pilot; its controlled comparison against RTF 1.0 / 10-second cooldown was
-interrupted by host clock jumps and DDS network errors. Default RTF remains
-1.0 until comparison and soak validation finish. Whatever RTF, cooldown,
-and restart policy is ultimately selected MUST apply identically to every
-baseline and semantic condition. Never compare conditions using different
-RTFs. Preserve the 1 ms physics step and stock Nav2 parameters.
+Start plugin development while unattended batches run. Do not wait for a
+perfect harness or reinstate the old 50-trial gate. Prior latest long-batch
+yield was 21/25 (84%); the prior five-trial pilot was 5/5. Neither validates
+the new low-speed/restart protocol. See docs/phase0/status.md for new evidence.
 
-Live controller_server and bt_navigator parameters both report
-`use_sim_time=true`. At RTF 0.5, measured command publication remains about
-20 Hz in wall time and becomes about 40 Hz in simulation time. Therefore,
-reduced RTF must NOT be described as preserving controller timing or
-trajectories. `loop_rate_min_hz` retains the original simulated-clock
-command-arrival definition, including conservative penalties for recovery
-gaps; it is not a direct measurement of controller compute duration.
-`loop_rate_wall_min_hz` and raw interval CSVs retain the other clock.
-Navigation timeouts now use simulated seconds; a separate wall-time
-watchdog protects stalled runs. Host must remain awake during experiments.
-
-Evidence, limitations, and exact resume commands: `docs/phase0/status.md`.
+Use `bash scripts/phase0.sh ...` from the project root. It manually sources
+`env.sh` and confines ROS/Gazebo logs, caches, and scratch files to
+`results/phase0/runtime`. ROS/Gazebo requires normal host execution,
+not the Codex network/PID sandbox. Do not install software or change global
+shell configuration. Keep all project artifacts inside this repository.

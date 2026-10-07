@@ -54,7 +54,7 @@ def generate_launch_description():
     pkg_share = get_package_share_directory('semantic_nav_sim')
     nav2_bringup_share = get_package_share_directory('nav2_bringup')
 
-    params_file = os.path.join(pkg_share, 'config', 'nav2_params.yaml')
+    params_file = LaunchConfiguration('params_file')
     map_yaml = os.path.join(pkg_share, 'maps', 'arena_lidar_view.yaml')
     localization_launch = os.path.join(
         nav2_bringup_share, 'launch', 'localization_launch.py')
@@ -91,6 +91,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('params_file', default_value=os.path.join(
+            pkg_share, 'config', 'nav2_params.yaml')),
         DeclareLaunchArgument('x', default_value='-4.0'),
         DeclareLaunchArgument('y', default_value='4.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),

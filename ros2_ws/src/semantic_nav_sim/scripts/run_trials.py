@@ -49,6 +49,7 @@ import json
 import hashlib
 import xml.etree.ElementTree as ET
 import math
+import multiprocessing
 import os
 import random
 import signal
@@ -453,20 +454,45 @@ class TrialMonitor(Node):
             self.destroy_client(client)
 
     def verify_sim_time(self):
-        """Read live parameters, rather than inferring them only from launch files."""
-        for name in ('controller_server', 'bt_navigator'):
+        """One bounded live parameter/clock graph check before navigation."""
+        names = {'controller_server', 'bt_navigator', 'planner_server', 'amcl',
+                 'map_server', 'robot_state_publisher', 'parameter_bridge'}
+        # Include every live Nav2 server/costmap, not only the two action nodes.
+        for name, namespace in self.get_node_names_and_namespaces():
+            if (name.endswith('_server') or name.endswith('_costmap') or
+                    name in ('velocity_smoother', 'collision_monitor', 'waypoint_follower') or
+                    name.startswith('lifecycle_manager')):
+                names.add((namespace.rstrip('/') + '/' + name).lstrip('/'))
+        subscribers = {(info.node_namespace.rstrip('/') + '/' + info.node_name).lstrip('/')
+                       for info in self.get_subscriptions_info_by_topic('/clock')}
+        self.sim_time_check = {'nodes': {}, 'clock_advanced': False}
+        valid = True
+        for name in sorted(names):
             client = self.create_client(GetParameters, f'/{name}/get_parameters')
             try:
                 if not client.wait_for_service(timeout_sec=5.):
-                    return False
+                    self.sim_time_check['nodes'][name] = {'error': 'parameter_service_missing'}
+                    valid = False
+                    continue
                 request = GetParameters.Request(names=['use_sim_time'])
                 future = client.call_async(request)
                 rclpy.spin_until_future_complete(self, future, timeout_sec=5.)
-                if not future.done() or not future.result().values[0].bool_value:
-                    return False
+                response = future.result() if future.done() else None
+                enabled = bool(response and response.values and response.values[0].bool_value)
+                connected = name in subscribers
+                self.sim_time_check['nodes'][name] = {
+                    'use_sim_time': enabled, 'clock_subscription': connected}
+                valid = valid and enabled and connected
             finally:
                 self.destroy_client(client)
-        return True
+        start = self.get_clock().now().nanoseconds
+        deadline = time.monotonic() + 3.
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=0.1)
+            if self.get_clock().now().nanoseconds > start:
+                self.sim_time_check['clock_advanced'] = True
+                break
+        return valid and self.sim_time_check['clock_advanced']
 
     def send_goal_and_wait(self, goal_x, goal_y, timeout_sec, wall_timeout):
         """Returns (nav2_result: str, number_of_recoveries: int)."""
@@ -506,16 +532,18 @@ class TrialMonitor(Node):
                 self.clock_events.extend([
                     dict(phase='before_clock_discontinuity', **previous_clocks),
                     dict(phase='clock_discontinuity', **clocks)])
+                # Accepted limitation (October 6): observe once per step;
+                # host realtime changes do not invalidate simulated navigation.
+                clock_offset = clocks['realtime_s'] - clocks['monotonic_s']
             previous_clocks = clocks
-            if result_future.done() and not clock_jump:
+            if result_future.done():
                 self.clock_events.append(dict(phase='navigation_result', **clocks))
                 break
             sim_elapsed = self.get_clock().now().nanoseconds * 1e-9 - sim_start
-            if clock_jump or sim_elapsed >= timeout_sec or time.monotonic() > deadline:
+            if sim_elapsed >= timeout_sec or time.monotonic() > deadline:
                 cancel_future = goal_handle.cancel_goal_async()
                 rclpy.spin_until_future_complete(self, cancel_future, timeout_sec=5.0)
-                result = ('clock_discontinuity' if clock_jump else
-                          'timeout' if sim_elapsed >= timeout_sec else 'wall_safety_timeout')
+                result = 'timeout' if sim_elapsed >= timeout_sec else 'wall_safety_timeout'
                 return result, recoveries['n']
 
         status = result_future.result().status
@@ -565,6 +593,10 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         'nav2_use_sim_time': None, 'navigation_sim_s': None,
         'total_wall_s': None, 'cooldown_sec': args.cooldown_sec,
         'host_clock_gap_s': None,
+        'clock_policy': 'sim_time_host_steps_accepted_v1',
+        'max_linear_speed': args.max_linear_speed,
+        'runner_restart_policy': 'per_trial', 'worker_pid': os.getpid(),
+        'worker_rss_bytes': None, 'worker_open_fds': None,
         'loop_rate_wall_min_hz': None,
         'raw_command_gap_min_hz': None, 'raw_command_wall_min_hz': None,
         'active_command_min_hz': None, 'active_command_wall_min_hz': None,
@@ -580,7 +612,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         log.flush()
         launch_proc = subprocess.Popen(
             ['ros2', 'launch', 'semantic_nav_sim', 'bringup_all.launch.py',
-             f'x:={jx}', f'y:={jy}', f'yaw:={jyaw}', f'world:={args.world_path}'],
+             f'x:={jx}', f'y:={jy}', f'yaw:={jyaw}', f'world:={args.world_path}',
+             f'params_file:={args.params_path}'],
             stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True,
         )
@@ -594,6 +627,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             readiness_error = monitor.wait_for_ready(jx, jy, args.startup_timeout)
             if not readiness_error:
                 row['nav2_use_sim_time'] = monitor.verify_sim_time()
+                with open(os.path.join(log_dir, trial_name + '_sim_time.json'), 'w') as stream:
+                    json.dump(monitor.sim_time_check, stream, indent=2)
                 if not row['nav2_use_sim_time']:
                     readiness_error = 'use_sim_time_verification_failed'
             if readiness_error:
@@ -608,7 +643,7 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                 nav_sim_s = monitor.get_clock().now().nanoseconds * 1e-9 - nav_sim_start
                 row['navigation_sim_s'] = round(nav_sim_s, 4)
                 row['rtf_observed'] = round(nav_sim_s / (time.monotonic()-nav_wall_start), 4)
-                if result in ('wall_safety_timeout', 'clock_discontinuity'):
+                if result == 'wall_safety_timeout':
                     row['error'] = result
                 elif monitor.goal_accepted:
                     row['nav2_result'] = result
@@ -696,14 +731,47 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         row['total_wall_s'] = round(time.monotonic()-trial_wall_start, 3)
         gap = time.time()-trial_calendar_start-row['total_wall_s']
         row['host_clock_gap_s'] = round(gap, 3)
-        if abs(gap) > 2.:
-            row.update(error='clock_discontinuity', failure_class='INFRASTRUCTURE',
-                       usable=False, nav2_result=None, success=None)
+        row['worker_rss_bytes'] = psutil.Process().memory_info().rss
+        row['worker_open_fds'] = psutil.Process().num_fds()
         log.write(f'[{ts()}] trial result: {row}\n')
         log.flush()
 
     assert_clean(f'trial {trial_name}: post-teardown check')
     return row
+
+
+def trial_worker(connection, args, scenario, trial_idx, rng, log_dir):
+    """Fresh interpreter for each attempt; no ROS objects survive into the next."""
+    try:
+        row = run_one_trial(args, scenario, trial_idx, rng, log_dir)
+        connection.send((row, rng.getstate(), None))
+    except BaseException as exc:
+        connection.send((None, None, f'{type(exc).__name__}: {exc}'))
+    finally:
+        connection.close()
+
+
+def run_isolated_trial(args, scenario, trial_idx, rng, log_dir):
+    context = multiprocessing.get_context('spawn')
+    receive, send = context.Pipe(duplex=False)
+    worker = context.Process(target=trial_worker,
+                             args=(send, args, scenario, trial_idx, rng, log_dir))
+    worker.start()
+    send.close()
+    try:
+        try:
+            row, state, error = receive.recv()
+        except EOFError as exc:
+            raise OrphanProcessError('Trial worker exited without a saved result; stop batch') from exc
+        worker.join()
+        if error or worker.exitcode:
+            raise OrphanProcessError(error or f'Trial worker exit code {worker.exitcode}')
+        rng.setstate(state)
+        return row
+    finally:
+        receive.close()
+        if not worker.is_alive():
+            worker.close()
 
 
 def main():
@@ -723,7 +791,7 @@ def main():
                          help='Uniform +/- radians applied to start yaw (default: 0.10).')
     parser.add_argument('--timeout', type=float, default=90.0,
                          help='Navigation timeout in simulated seconds (default: 90).')
-    parser.add_argument('--rtf', type=float, default=1.0,
+    parser.add_argument('--rtf', type=float, default=0.5,
                          help='Gazebo target real-time factor; physics step stays 1 ms.')
     parser.add_argument('--startup-timeout', type=float, default=45.0,
                          help='Max wait for action server + AMCL localization '
@@ -736,6 +804,8 @@ def main():
                          help=f'Robot footprint margin for pose-overlap collision '
                               f'detection, meters (default: {DEFAULT_COLLISION_MARGIN}).')
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--max-linear-speed', type=float, default=0.25,
+                        help='Common forward/reverse speed cap in m/s (default: 0.25).')
     parser.add_argument('--cooldown-sec', type=float, default=0.0,
                          help='Idle wall seconds between trials (default: 0). '
                               'Record and use the same setting for every condition.')
@@ -743,7 +813,8 @@ def main():
                          help='CSV output path (default: results/trials_<timestamp>.csv)')
     args = parser.parse_args()
 
-    if args.rtf <= 0 or args.trials < 1 or args.timeout <= 0 or args.cooldown_sec < 0:
+    if (args.rtf <= 0 or args.trials < 1 or args.timeout <= 0 or args.cooldown_sec < 0
+            or not 0 < args.max_linear_speed <= 0.5):
         parser.error('rtf, trials and timeout must be positive; cooldown must be nonnegative')
     rng = random.Random(args.seed)
 
@@ -754,6 +825,8 @@ def main():
 
     stamp = datetime.now().strftime('%Y%m%d_%H%M%S_%f')
     out_path = args.out or os.path.join('results', f'trials_{stamp}.csv')
+    if Path(out_path).exists():
+        parser.error('Output already exists; use a fresh path to preserve every attempt')
     log_dir = os.path.join(os.path.dirname(out_path) or '.', f'logs_{stamp}')
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
@@ -763,8 +836,20 @@ def main():
     world.find('./world/physics/real_time_factor').text = str(args.rtf)
     args.world_path = str(Path(log_dir, 'arena.sdf').resolve())
     world.write(args.world_path, encoding='utf-8', xml_declaration=True)
+    params = yaml.safe_load((PROJECT_ROOT / 'ros2_ws/src/semantic_nav_sim/config/nav2_params.yaml').read_text())
+    controller = params['controller_server']['ros__parameters']['FollowPath']
+    controller['vx_max'] = args.max_linear_speed
+    controller['vx_min'] = -args.max_linear_speed
+    smoother = params['velocity_smoother']['ros__parameters']
+    smoother['max_velocity'][0] = args.max_linear_speed
+    smoother['min_velocity'][0] = -args.max_linear_speed
+    args.params_path = str(Path(log_dir, 'nav2_trial_params.yaml').resolve())
+    Path(args.params_path).write_text(yaml.safe_dump(params, sort_keys=False))
     with open(os.path.splitext(out_path)[0] + '_manifest.json', 'w') as manifest:
         metadata = dict(vars(args))
+        metadata['runner_restart_policy'] = 'per_trial'
+        metadata['clock_policy'] = 'sim_time_host_steps_accepted_v1'
+        metadata['params_sha256'] = hashlib.sha256(Path(args.params_path).read_bytes()).hexdigest()
         metadata['git_commit'] = subprocess.check_output(
             ['git', 'rev-parse', 'HEAD'], cwd=PROJECT_ROOT, text=True).strip()
         metadata['source_sha256'] = {}
@@ -786,6 +871,8 @@ def main():
         'rtf_target', 'rtf_observed', 'nav2_use_sim_time', 'navigation_sim_s',
         'total_wall_s', 'cooldown_sec', 'loop_rate_wall_min_hz',
         'host_clock_gap_s',
+        'clock_policy', 'max_linear_speed', 'runner_restart_policy',
+        'worker_pid', 'worker_rss_bytes', 'worker_open_fds',
         'raw_command_gap_min_hz', 'raw_command_wall_min_hz',
         'active_command_min_hz', 'active_command_wall_min_hz',
         'num_active_cmd_intervals', 'loop_rate_metric',
@@ -824,7 +911,7 @@ def main():
                 print(f'[{ts()}] trial {done}/{total}: '
                       f"{scenario['name']} #{trial_idx:03d} ...", flush=True)
                 try:
-                    row = run_one_trial(args, scenario, trial_idx, rng, log_dir)
+                    row = run_isolated_trial(args, scenario, trial_idx, rng, log_dir)
                 except OrphanProcessError as e:
                     print(f'\n{"=" * 70}\n'
                           f'ABORTING BATCH — orphaned process(es) survived teardown.\n'
@@ -844,9 +931,8 @@ def main():
                       f"loop_rate(mean/min)={row['loop_rate_mean_hz']}/"
                       f"{row['loop_rate_min_hz']} Hz{flag}", flush=True)
                 if row['error']:
-                    print(f"ABORTING BATCH — infrastructure exception: {row['error']}",
-                          file=sys.stderr)
-                    sys.exit(1)
+                    print(f"INFRASTRUCTURE failure retained: {row['error']}; teardown clean",
+                          file=sys.stderr, flush=True)
                 if args.cooldown_sec > 0 and done < total:
                     time.sleep(args.cooldown_sec)
 

@@ -40,8 +40,10 @@ def main():
             resources = list(csv.DictReader(stream))
         elapsed = (datetime.fromisoformat(resources[-1]['timestamp']) -
                    datetime.fromisoformat(resources[0]['timestamp'])).total_seconds()
-        timing_valid = elapsed > 0 and not any(row.get('error') == 'clock_discontinuity'
-                                               for row in rows)
+        timing_valid = elapsed > 0 and not any(
+            row.get('error') == 'clock_discontinuity' or
+            abs(float(row.get('host_clock_gap_s') or 0)) > 2 or
+            row.get('clock_policy') == 'sim_time_host_steps_accepted_v1' for row in rows)
         report['batch_timing_valid'] = timing_valid
         report['batch_calendar_elapsed_s'] = elapsed
         report['batch_wall_s_including_cooldown'] = elapsed if timing_valid else None
@@ -71,10 +73,13 @@ def main():
     gate_metric_valid = all(row.get('loop_rate_metric', 'all_command_gaps_v1')
                             == 'all_command_gaps_v1' for row in rows)
     report['gate_metric_valid'] = gate_metric_valid
-    report['gate_pass'] = bool(gate_metric_valid and len(rows) == 50 and usable.sum() >= 48 and
-                              mask.sum() >= 48 and
-                              not report.get('linear_trend_detected_005', True) and
-                              report.get('practical_trend_within_10_percent', False))
+    report['gate_policy'] = 'oct06_30_trials_90_percent'
+    report['gate_pass'] = bool(gate_metric_valid and len(rows) == 30 and usable.sum() >= 27)
+    report['protocol'] = {key: sorted({row.get(key, '') for row in rows}) for key in
+                          ('rtf_target', 'cooldown_sec', 'max_linear_speed',
+                           'runner_restart_policy', 'clock_policy')}
+    if any(len(values) != 1 for values in report['protocol'].values()):
+        report['gate_pass'] = False
     fig, ax = plt.subplots(figsize=(10, 4.5), constrained_layout=True)
     metric_label = ('Active FollowPath minima (simulation clock)'
                     if rows[0].get('loop_rate_metric') == 'follow_path_active_v2'

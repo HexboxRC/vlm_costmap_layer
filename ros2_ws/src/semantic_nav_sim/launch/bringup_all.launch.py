@@ -28,10 +28,13 @@ def generate_launch_description():
     nav2_bringup = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(launch_dir, 'nav2_bringup.launch.py')),
-        launch_arguments={'x': x, 'y': y, 'yaw': yaw}.items(),
+        launch_arguments={'x': x, 'y': y, 'yaw': yaw,
+                          'params_file': LaunchConfiguration('params_file')}.items(),
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('params_file', default_value=os.path.join(
+            pkg_share, 'config', 'nav2_params.yaml')),
         DeclareLaunchArgument('world', default_value=os.path.join(pkg_share, 'worlds', 'arena.sdf')),
         DeclareLaunchArgument('x', default_value='-4.0'),
         DeclareLaunchArgument('y', default_value='4.0'),

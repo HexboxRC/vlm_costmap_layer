@@ -1,6 +1,40 @@
-# Phase 0 status — 2026-10-05
+# Phase 0 status — 2026-10-06
 
-**Gate NOT MET. The first 50-trial soak attempt stopped at trial 25.**
+**Current gate: at least 27 usable attempts in a completed 30-trial batch.**
+The former 48/50 gate is superseded by the October 6 user decision.
+
+## October 6 implementation and first smoke
+
+Time synchronization investigation is closed by user decision. All 18 checked
+live nodes (Nav2, costmaps, lifecycle managers, bridge and robot state
+publisher) report `use_sim_time=true` and `/clock` subscriptions; the monitor
+observed advancing simulated time. Graph connectivity plus a live clock is
+the verification used; this does not instrument every subscriber callback.
+
+Selected shared protocol: RTF 0.5, zero cooldown, fresh spawned Python
+runner per trial, common forward/reverse linear cap 0.25 m/s, 90 simulated
+seconds timeout. Four speed values are overridden in a saved per-batch
+Nav2 YAML; the stock source YAML remains intact. Other Nav2 parameters and
+the 1 ms physics step are unchanged. Host clock steps are logged but no
+longer cancel navigation or invalidate its result. Wall watchdog, lifecycle
+readiness, action acceptance, TF and clean teardown remain enforced.
+Infrastructure failures retain empty navigation result/success fields; after
+clean teardown, ordinary infrastructure failures count and the batch proceeds.
+
+Build passed (1 package, 1.13 s). Six regression checks passed in 4.964 s,
+including host-step acceptance, stalled-simulation watchdog and no-goal
+classification. First smoke `results/phase0/oct06_restart_smoke.csv`: goal
+succeeded, no collision, zero recoveries, clean teardown, but **0/1 usable**
+under the retained all-command-gap minimum (7.52 Hz versus 18 Hz). Simulated
+navigation lasted 31.406 s. No infrastructure failure. Calendar time and
+throughput are deliberately not treated as reliable timing evidence.
+
+Next: unattended 30 trials, seed 20261006, identical settings. Plugin work
+proceeds concurrently. This is a reliability check, not paper campaign data.
+
+## Historical status (superseded instructions below)
+
+The first 50-trial soak attempt stopped at trial 25.
 RTF 0.5 / zero cooldown / seed 20260927 produced 21 usable attempts out
 of 25; trial 25 was an infrastructure failure. No plugin work or data
 campaign has started. No further batch was launched after the failure.

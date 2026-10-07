@@ -106,7 +106,8 @@ class FailureClassificationTest(unittest.TestCase):
         monitor._interval_samples = []
         args = SimpleNamespace(jitter_xy=0., jitter_yaw=0., rtf=1., cooldown_sec=0.,
                                collision_margin=.22, startup_timeout=.01,
-                               loop_rate_threshold=18., world_path='unused')
+                               loop_rate_threshold=18., world_path='unused',
+                               max_linear_speed=.25, params_path='unused')
         scenario = dict(name='test', start=dict(x=0., y=0., yaw=0.),
                         goal=dict(x=1., y=0.), straight_line_distance=1.)
         with tempfile.TemporaryDirectory(dir=run_trials.PROJECT_ROOT / 'results/phase0') as tmp:
@@ -167,8 +168,9 @@ class LoopRateSegmentationTest(unittest.TestCase):
             rclpy.shutdown()
 
 
-class ClockGuardTest(unittest.TestCase):
-    def test_clock_event_recorded_without_commands_even_if_result_arrives(self):
+class AcceptedHostClockTest(unittest.TestCase):
+    def test_host_step_does_not_cancel_successful_simulated_navigation(self):
+        from types import SimpleNamespace
         from unittest.mock import MagicMock, patch
         from rclpy.time import Time
         import run_trials
@@ -179,6 +181,8 @@ class ClockGuardTest(unittest.TestCase):
         handle = monitor._nav_client.send_goal_async.return_value.result.return_value
         handle.accepted = True
         handle.get_result_async.return_value.done.return_value = True
+        handle.get_result_async.return_value.result.return_value = SimpleNamespace(
+            status=run_trials.GoalStatus.STATUS_SUCCEEDED)
         before = dict(realtime_s=100., monotonic_s=10., boottime_s=10., monotonic_raw_s=9.)
         after = dict(realtime_s=334., monotonic_s=11., boottime_s=244., monotonic_raw_s=10.)
         with patch.object(run_trials, 'host_clock_snapshot', side_effect=[before, after]), \
@@ -186,7 +190,26 @@ class ClockGuardTest(unittest.TestCase):
                 patch.object(run_trials.rclpy, 'spin_once'), \
                 patch.object(run_trials.rclpy, 'spin_until_future_complete'):
             result, _ = TrialMonitor.send_goal_and_wait(monitor, 1., 0., 90., 570.)
-        self.assertEqual(result, 'clock_discontinuity')
+        self.assertEqual(result, 'succeeded')
+        handle.cancel_goal_async.assert_not_called()
+        self.assertIn(dict(phase='clock_discontinuity', **after), monitor.clock_events)
+
+    def test_stalled_simulation_still_hits_wall_watchdog(self):
+        from unittest.mock import MagicMock, patch
+        from rclpy.time import Time
+        import run_trials
+        monitor = MagicMock()
+        monitor.clock_events = []
+        monitor.get_clock.return_value.now.return_value = Time(nanoseconds=0)
+        handle = monitor._nav_client.send_goal_async.return_value.result.return_value
+        handle.accepted = True
+        handle.get_result_async.return_value.done.return_value = False
+        clocks = dict(realtime_s=100., monotonic_s=10., boottime_s=10., monotonic_raw_s=9.)
+        with patch.object(run_trials, 'host_clock_snapshot', return_value=clocks), \
+                patch.object(run_trials.time, 'monotonic', side_effect=[0., 11.]), \
+                patch.object(run_trials.rclpy, 'ok', return_value=True), \
+                patch.object(run_trials.rclpy, 'spin_once'), \
+                patch.object(run_trials.rclpy, 'spin_until_future_complete'):
+            result, _ = TrialMonitor.send_goal_and_wait(monitor, 1., 0., 90., 10.)
+        self.assertEqual(result, 'wall_safety_timeout')
         handle.cancel_goal_async.assert_called_once()
-        self.assertEqual(monitor.clock_events[-2], dict(phase='before_clock_discontinuity', **before))
-        self.assertEqual(monitor.clock_events[-1], dict(phase='clock_discontinuity', **after))
