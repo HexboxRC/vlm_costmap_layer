@@ -1,0 +1,5 @@
+<library path="semantic_nav_costmap_layer">
+  <class type="semantic_nav_costmap_layer::SemanticLayer" base_class_type="nav2_costmap_2d::Layer">
+    <description>Merge 0–254 semantic costs without reducing existing obstacle costs.</description>
+  </class>
+</library>

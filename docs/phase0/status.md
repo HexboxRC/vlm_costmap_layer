@@ -1,4 +1,56 @@
-# Phase 0 status — 2026-10-06
+# Project status — 2026-10-12
+
+## October 12 semantic layer and ground-truth integration milestone
+
+Resumed the uncommitted layer, oracle and harness integration from the
+previous session. Both packages built successfully. All nine Python
+harness/oracle tests and seven C++ semantic-layer tests passed. Tests cover
+graduated values, preserving existing geometry, expiry/replacement, transforms,
+plugin loading, ROS delivery, stock inflation and failure classification.
+
+Fresh headless smoke command (exit 0):
+
+```bash
+bash scripts/phase0.sh --scenario glass_wall --condition ground_truth \
+  --trials 1 --seed 20261012 \
+  --out results/phase0/oct12_glass_ground_truth_smoke.csv
+```
+
+[CSV](evidence/oct12_glass_ground_truth_smoke.csv),
+[resources](evidence/oct12_glass_ground_truth_smoke_resources.csv),
+[manifest](evidence/oct12_glass_ground_truth_smoke_manifest.json),
+[audit archive](evidence/oct12_glass_ground_truth_smoke_audit.tar.gz).
+
+Result: **1/1 usable, navigation succeeded, no collision flagged by the
+existing pose/geometry proxy, zero recoveries, clean teardown**. Navigation
+took 36.381 simulated seconds; recorded path length was 9.0273 m. Minimum
+all-command-gap rate was 37.04 Hz (18 Hz cutoff unchanged). The recorded
+map-frame trajectory crossed near x=0 at y=1.993–2.013, below the glass
+wall's y=2.75 lower edge. This is evidence of routing around the wall.
+
+Before goal submission the live global master costmap contained glass=254
+and grass=0. All 19 checked nodes had simulated time enabled and clock
+subscriptions; the clock advanced. The validated common protocol remains
+RTF 0.5, zero cooldown, a new worker per trial, 0.25 m/s forward/reverse cap,
+90 simulated seconds timeout and 1 ms physics step. No other controller
+parameters were tuned. Baseline excludes both oracle and semantic layer.
+
+The prior October 7 attempt has only a CSV header, live readiness evidence,
+and a launch log ending during navigation. It is retained in the audit
+archive as an incomplete attempt, with no inferred outcome or teardown claim;
+it is not counted in the fresh one-trial denominator. The October 12 runner
+passed its pre-launch and post-teardown process checks.
+
+This milestone establishes integration only. The smoke uses lethal glass
+and unpenalized grass; intermediate penalties are tested but their navigation
+benefit is unmeasured. No comparative efficacy or campaign yield is claimed.
+The collision field remains a localization/geometry proxy, not contact-sensor
+ground truth. The cloud-VLM adapter is still unfinished. Next: a matched
+baseline/ground-truth glass pilot with every attempt retained, then camera
+projection and the cloud adapter using the same cost-grid input contract.
+
+`AGENTS.md` remains authoritative: the untracked historical `claude.md`
+contains superseded scope and harness gates and was left untouched.
 
 **Current gate: at least 27 usable attempts in a completed 30-trial batch.**
 The former 48/50 gate is superseded by the October 6 user decision.

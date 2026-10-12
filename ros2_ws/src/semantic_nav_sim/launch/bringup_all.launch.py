@@ -9,6 +9,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
+from launch.conditions import LaunchConfigurationEquals
+from launch_ros.actions import Node
 
 
 def generate_launch_description():
@@ -33,6 +35,8 @@ def generate_launch_description():
     )
 
     return LaunchDescription([
+        DeclareLaunchArgument('condition', default_value='baseline',
+                              choices=['baseline', 'ground_truth']),
         DeclareLaunchArgument('params_file', default_value=os.path.join(
             pkg_share, 'config', 'nav2_params.yaml')),
         DeclareLaunchArgument('world', default_value=os.path.join(pkg_share, 'worlds', 'arena.sdf')),
@@ -40,5 +44,9 @@ def generate_launch_description():
         DeclareLaunchArgument('y', default_value='4.0'),
         DeclareLaunchArgument('yaw', default_value='0.0'),
         robot_bringup,
+        Node(package='semantic_nav_sim', executable='publish_ground_truth.py',
+             condition=LaunchConfigurationEquals('condition', 'ground_truth'),
+             parameters=[{'use_sim_time': True, 'world': LaunchConfiguration('world')}],
+             output='screen'),
         nav2_bringup,
     ])
