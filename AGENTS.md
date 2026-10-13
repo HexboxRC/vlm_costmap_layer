@@ -142,3 +142,18 @@ Use `bash scripts/phase0.sh ...` from the project root. It manually sources
 `results/phase0/runtime`. ROS/Gazebo requires normal host execution,
 not the Codex network/PID sandbox. Do not install software or change global
 shell configuration. Keep all project artifacts inside this repository.
+
+## October 13 decision — scenario and campaign priorities
+
+First demonstrate graded costs: route_choice (short clean detour) and
+forced_crossing (long clean detour), grass cost 40 versus binary lethal 254
+and stock baseline. Preserve stock planner/controller and common protocol.
+Then replace the collision proxy with Gazebo contacts, time-boxed to two
+hours; if not verified by then, stop and report the limitation. Run matched
+10-attempt pilots per condition per scenario after preregistration.
+Campaign starts October 18 regardless; writing starts the same day.
+Cloud VLM node is to run on the user's Raspberry Pi 5 over the network;
+Gazebo remains on the laptop. This supersedes the older exclusion of all
+Pi deployment: local Pi model comparison and physical hardware validation
+remain dropped. Measure full end-to-end latency distributions and explain
+the glass-localization method before implementing it.
