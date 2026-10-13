@@ -52,3 +52,10 @@
   ros_type_name: "ros_gz_interfaces/msg/Contacts"
   gz_type_name: "gz.msgs.Contacts"
   direction: GZ_TO_ROS
+
+# Evaluation-only world pose; never publish this transform on /tf.
+- ros_topic_name: "/benchmark/robot_pose"
+  gz_topic_name: "/model/semantic_nav_robot/pose"
+  ros_type_name: "geometry_msgs/msg/PoseStamped"
+  gz_type_name: "gz.msgs.Pose"
+  direction: GZ_TO_ROS

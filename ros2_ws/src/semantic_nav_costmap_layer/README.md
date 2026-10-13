@@ -61,9 +61,10 @@ bash scripts/phase0.sh --scenario glass_wall --condition ground_truth \
 Use a new output filename for every run. `--condition baseline` excludes
 the producer and layer. Both conditions retain the validated RTF 0.5,
 zero cooldown, fresh worker per trial, 0.25 m/s speed cap and 90 simulated
-seconds timeout. The oracle assigns glass 254 and grass 0; intermediate
-cost support is covered by tests, not a claim of graduated-cost efficacy
-from this two-class smoke trial. The cloud-VLM adapter remains unfinished.
+seconds timeout. The oracle assigns glass 254 and grass 40. `--condition binary` instead
+assigns both classes 254. The route_choice and forced_crossing scenarios
+exercise short versus long clean detours; use the matched pilot for
+experimental evidence. The cloud-VLM adapter remains unfinished.
 
 Tests exercise pluginlib loading and ROS delivery, graded costs, preserving
 obstacles/unknown cells, expiry/replacement, frame transforms, rotated maps,

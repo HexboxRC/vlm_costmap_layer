@@ -104,6 +104,8 @@ class FailureClassificationTest(unittest.TestCase):
             with self.subTest(result=result):
                 monitor = MagicMock()
                 monitor._pose_samples = []
+                monitor._first_plan = None
+                monitor._truth_samples = []
                 monitor.pose_overlap = False
                 monitor.contact_audit.return_value = {}
                 monitor.contact_healthy.return_value = True
@@ -148,6 +150,8 @@ class FailureClassificationTest(unittest.TestCase):
 
         monitor = MagicMock()
         monitor._pose_samples = []
+        monitor._first_plan = None
+        monitor._truth_samples = []
         monitor.pose_overlap = False
         monitor.contact_audit.return_value = {}
         monitor.contact_healthy.return_value = True
@@ -235,6 +239,8 @@ class AcceptedHostClockTest(unittest.TestCase):
 
         monitor = MagicMock()
         monitor._pose_samples = []
+        monitor._first_plan = None
+        monitor._truth_samples = []
         monitor.pose_overlap = False
         monitor.contact_audit.return_value = {}
         monitor.contact_healthy.return_value = True
@@ -262,6 +268,8 @@ class AcceptedHostClockTest(unittest.TestCase):
         import run_trials
         monitor = MagicMock()
         monitor._pose_samples = []
+        monitor._first_plan = None
+        monitor._truth_samples = []
         monitor.pose_overlap = False
         monitor.contact_audit.return_value = {}
         monitor.contact_healthy.return_value = True

@@ -13,7 +13,7 @@ import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
 from rclpy.qos import qos_profile_sensor_data
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, PoseStamped
 from ros_gz_interfaces.msg import Contacts
 root=Path(__file__).resolve().parents[1]
 out=root/'results/phase0'/('contact_probe_'+str(time.monotonic_ns()))
@@ -24,7 +24,10 @@ p=subprocess.Popen(['ros2','launch','semantic_nav_sim','robot_bringup.launch.py'
 rclpy.init()
 node=Node('contact_probe',parameter_overrides=[Parameter('use_sim_time',value=True)])
 pub=node.create_publisher(Twist,'/cmd_vel',10)
-counts={'ground':0,'obstacle':0,'irrelevant':0}; samples=[]
+counts={'ground':0,'obstacle':0,'irrelevant':0}; samples=[]; truth=[]
+def pose_callback(msg):
+    truth.append(dict(frame=msg.header.frame_id, t=msg.header.stamp.sec+msg.header.stamp.nanosec*1e-9,x=msg.pose.position.x,y=msg.pose.position.y))
+node.create_subscription(PoseStamped,'/benchmark/robot_pose',pose_callback,100)
 def callback(msg):
     for c in msg.contacts:
         kind=classify_pair(c.collision1.name,c.collision2.name)
@@ -51,7 +54,10 @@ try:
             raise RuntimeError('False collision during stationary free-space check')
     pub.publish(Twist())
 finally:
-    (out/'contacts.json').write_text(json.dumps({'passed':passed,'counts':counts,'samples':samples},indent=2))
+    (out/'contacts.json').write_text(json.dumps({'passed':passed,'counts':counts,'samples':samples,'truth_poses':truth},indent=2))
     node.destroy_node();rclpy.try_shutdown();run_trials.teardown_stack(p,log);log.close()
 print(json.dumps({'passed':passed,'counts':counts}))
 if not passed:raise SystemExit('Contact sensor diagnostic failed')
+if not truth or truth[0]['frame'] not in ('arena','world') or abs(truth[0]['x']+1)>.1 or abs(truth[-1]['x']+.225)>.1:
+    raise SystemExit('Evaluation pose diagnostic failed')
+print('Evaluation poses:',truth[0],truth[-1])

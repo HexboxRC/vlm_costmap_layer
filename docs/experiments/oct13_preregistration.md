@@ -101,3 +101,14 @@ first-global-plan and commanded-velocity recording; inspect why the robot
 moves away from the goal before considering a documented geometry revision.
 This is development evidence outside the fixed pilot denominator. No Nav2
 parameter tuning; no clock investigation. Time-box diagnosis to one hour.
+
+The nominal-start diagnostic succeeded with a real clean bypass (zero grass
+centerline exposure, 8.0419 m true path, minimum command rate 33.33 Hz).
+It also reported a final physical goal distance .2647 m despite Nav2 success;
+retain the separate physical-distance flag. The two jittered failures remain
+retained and unresolved; no scenario geometry or Nav2 settings are changed
+to remove them. The pilot quantifies this instability. Command-value logging
+was empty in that diagnostic due to a callback-name mismatch; corrected
+before pilot, with the first planner path and other evidence retained.
+Harness seeds control start jitter only; AMCL/MPPI internal random streams
+remain stock and are not claimed to be matched or deterministic.

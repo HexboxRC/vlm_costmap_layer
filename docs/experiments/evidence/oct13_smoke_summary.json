@@ -1,0 +1,305 @@
+{
+  "planned": 9,
+  "completed": 9,
+  "missing": [],
+  "seed_pose_mismatches": [],
+  "cells": [
+    {
+      "scenario": "forced_crossing",
+      "condition": "baseline",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 1,
+      "successful_crossings": 1,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        3.0161
+      ],
+      "path_length_m": [
+        7.7943
+      ],
+      "navigation_sim_s": [
+        31.41
+      ],
+      "minimum_command_hz": [
+        34.48
+      ]
+    },
+    {
+      "scenario": "forced_crossing",
+      "condition": "binary",
+      "attempts": 1,
+      "usable": 0,
+      "infrastructure": 0,
+      "command_gap_exclusions": 1,
+      "navigated": 1,
+      "goal_successes": 0,
+      "collision_free_successes": 0,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 0,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        3.1105
+      ],
+      "navigation_sim_s": [
+        28.118
+      ],
+      "minimum_command_hz": [
+        0.2
+      ]
+    },
+    {
+      "scenario": "forced_crossing",
+      "condition": "ground_truth",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 1,
+      "successful_crossings": 1,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        3.0234
+      ],
+      "path_length_m": [
+        7.7959
+      ],
+      "navigation_sim_s": [
+        31.067
+      ],
+      "minimum_command_hz": [
+        34.48
+      ]
+    },
+    {
+      "scenario": "glass_wall",
+      "condition": "baseline",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 0,
+      "contact_collisions": 1,
+      "contact_rate_wilson95": [
+        0.20654931437723745,
+        1.0
+      ],
+      "usable_contact_collisions": 1,
+      "usable_successes": 0,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        7.9388
+      ],
+      "navigation_sim_s": [
+        32.964
+      ],
+      "minimum_command_hz": [
+        20.83
+      ]
+    },
+    {
+      "scenario": "glass_wall",
+      "condition": "binary",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 1,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        8.903
+      ],
+      "navigation_sim_s": [
+        36.063
+      ],
+      "minimum_command_hz": [
+        34.48
+      ]
+    },
+    {
+      "scenario": "glass_wall",
+      "condition": "ground_truth",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 1,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        8.9387
+      ],
+      "navigation_sim_s": [
+        36.262
+      ],
+      "minimum_command_hz": [
+        32.26
+      ]
+    },
+    {
+      "scenario": "route_choice",
+      "condition": "baseline",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 1,
+      "successful_crossings": 1,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        3.0575
+      ],
+      "path_length_m": [
+        7.8075
+      ],
+      "navigation_sim_s": [
+        31.282
+      ],
+      "minimum_command_hz": [
+        34.48
+      ]
+    },
+    {
+      "scenario": "route_choice",
+      "condition": "binary",
+      "attempts": 1,
+      "usable": 1,
+      "infrastructure": 0,
+      "command_gap_exclusions": 0,
+      "navigated": 1,
+      "goal_successes": 1,
+      "collision_free_successes": 1,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 1,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 1,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        8.8165
+      ],
+      "navigation_sim_s": [
+        35.911
+      ],
+      "minimum_command_hz": [
+        32.26
+      ]
+    },
+    {
+      "scenario": "route_choice",
+      "condition": "ground_truth",
+      "attempts": 1,
+      "usable": 0,
+      "infrastructure": 0,
+      "command_gap_exclusions": 1,
+      "navigated": 1,
+      "goal_successes": 0,
+      "collision_free_successes": 0,
+      "contact_collisions": 0,
+      "contact_rate_wilson95": [
+        0.0,
+        0.7934506856227626
+      ],
+      "usable_contact_collisions": 0,
+      "usable_successes": 0,
+      "grass_crossings_observed": 0,
+      "successful_crossings": 0,
+      "successful_bypasses": 0,
+      "grass_path_m": [
+        0.0
+      ],
+      "path_length_m": [
+        7.4503
+      ],
+      "navigation_sim_s": [
+        33.459
+      ],
+      "minimum_command_hz": [
+        0.19
+      ]
+    }
+  ]
+}

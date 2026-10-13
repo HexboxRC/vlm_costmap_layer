@@ -1,4 +1,8 @@
-# Project status — 2026-10-12
+# Project status — 2026-10-13
+
+Current work: [scenario design, contact metric and matched pilot](../experiments/oct13_status.md).
+October 12 material below is historical; grass now costs 40, and contacts
+replace geometry inference. See the October 13 preregistration for changes.
 
 ## October 12 semantic layer and ground-truth integration milestone
 

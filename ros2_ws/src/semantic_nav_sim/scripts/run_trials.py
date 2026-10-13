@@ -65,10 +65,11 @@ import rclpy
 import yaml
 from action_msgs.msg import GoalStatus, GoalStatusArray
 from ament_index_python.packages import get_package_share_directory
-from geometry_msgs.msg import PoseWithCovarianceStamped, Twist
+from geometry_msgs.msg import PoseWithCovarianceStamped, PoseStamped, Twist
 from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import NavigateToPose
+from nav_msgs.msg import Path as NavPath
 from nav2_msgs.msg import Costmap
 from ros_gz_interfaces.msg import Contacts
 from rclpy.qos import qos_profile_sensor_data
@@ -313,6 +314,13 @@ class TrialMonitor(Node):
         self.tf_listener = TransformListener(self.tf_buffer, self)
         self._last_sample = None  # (x, y, t_sec)
         self._pose_samples = []
+        self._first_plan = None
+        self._commands = []
+        self.create_subscription(NavPath, '/plan', self._plan_cb, 10)
+        self._truth_samples = []
+        self._latest_truth = None
+        self._truth_max_gap = 0.
+        self.create_subscription(PoseStamped, '/benchmark/robot_pose', self._truth_cb, 100)
         self.path_length = 0.0
         self.collided = False
         self.pose_overlap = False
@@ -365,6 +373,9 @@ class TrialMonitor(Node):
             self._last_active_cmd = None
 
     def _cmd_vel_cb(self, _msg):
+        if _msg is not None:
+            self._commands.append((self.get_clock().now().nanoseconds*1e-9,
+                                   _msg.linear.x, _msg.angular.z))
         now = self.get_clock().now()
         wall_now = time.monotonic()
         self._num_cmd_msgs += 1
@@ -413,6 +424,37 @@ class TrialMonitor(Node):
             if (xmin - m) <= x <= (xmax + m) and (ymin - m) <= y <= (ymax + m):
                 self.pose_overlap = True
                 break
+
+    def _plan_cb(self, msg):
+        if self.goal_sent and self._first_plan is None and msg.poses:
+            self._first_plan = dict(frame=msg.header.frame_id,
+                points=[(p.pose.position.x, p.pose.position.y) for p in msg.poses])
+
+    def _truth_cb(self, msg):
+        if msg.header.frame_id not in ('arena', 'world'):
+            return
+        p = msg.pose.position
+        t = msg.header.stamp.sec + msg.header.stamp.nanosec*1e-9
+        if not all(math.isfinite(v) for v in (p.x, p.y, t)):
+            return
+        if self._latest_truth is not None:
+            self._truth_max_gap = max(self._truth_max_gap, t-self._latest_truth[0])
+        self._latest_truth = (t, p.x, p.y)
+        if self.goal_sent:
+            self._truth_samples.append(self._latest_truth)
+
+    def truth_healthy(self):
+        now = self.get_clock().now().nanoseconds*1e-9
+        return (self._latest_truth is not None and
+                -.1 <= now-self._latest_truth[0] <= 2. and self._truth_max_gap <= 2.)
+
+    def verify_truth_pose(self, x, y):
+        deadline = time.monotonic()+5.
+        while time.monotonic()<deadline:
+            rclpy.spin_once(self, timeout_sec=.1)
+            if self.truth_healthy() and math.hypot(self._latest_truth[1]-x, self._latest_truth[2]-y)<.2:
+                return True
+        return False
 
     def _contacts_cb(self, msg):
         now = self.get_clock().now().nanoseconds * 1e-9
@@ -607,6 +649,8 @@ class TrialMonitor(Node):
         self.pose_overlap = False
         self.collided = False
         self._contact_max_gap = 0.
+        self._truth_max_gap = 0.
+        self._truth_samples = [self._latest_truth] if self._latest_truth else []
         self.goal_sent = True
         send_future = self._nav_client.send_goal_async(
             goal_msg, feedback_callback=feedback_cb)
@@ -684,6 +728,7 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         'semantic_ready': None,
         'collision_metric': 'gazebo_obstacle_contacts_v1',
         'pose_overlap': None, 'grass_path_m': None, 'grass_central_crossing': None,
+        'true_path_length_m': None, 'true_goal_distance_m': None, 'physical_goal_reached': None,
         'start_x': round(jx, 4), 'start_y': round(jy, 4), 'start_yaw': round(jyaw, 4),
         'goal_x': goal['x'], 'goal_y': goal['y'],
         'straight_line_distance': scenario['straight_line_distance'],
@@ -738,6 +783,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                     readiness_error = 'use_sim_time_verification_failed'
             if not readiness_error and not monitor.verify_contacts():
                 readiness_error = 'contact_sensor_not_ready'
+            if not readiness_error and not monitor.verify_truth_pose(jx, jy):
+                readiness_error = 'evaluation_pose_not_ready'
             if not readiness_error and args.condition != 'baseline':
                 row['semantic_ready'] = monitor.verify_ground_truth(254 if args.condition == 'binary' else 40)
                 with open(os.path.join(log_dir, trial_name + '_semantic.json'), 'w') as stream:
@@ -767,9 +814,27 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
             if monitor.goal_accepted and not monitor.contact_healthy():
                 row['error'] = 'contact_stream_unhealthy'
             row['pose_overlap'] = monitor.pose_overlap if monitor.goal_accepted else None
-            row.update(grass_metrics(monitor._pose_samples, scenario))
+            if monitor.goal_accepted and not monitor.truth_healthy():
+                row['error'] = 'evaluation_pose_stream_unhealthy'
+            row.update(grass_metrics(monitor._truth_samples, scenario))
+            if monitor._truth_samples:
+                row['true_path_length_m'] = round(sum(math.hypot(b[1]-a[1], b[2]-a[2])
+                    for a,b in zip(monitor._truth_samples, monitor._truth_samples[1:]) if b[0]>a[0]),4)
+                final = monitor._truth_samples[-1]
+                row['true_goal_distance_m'] = round(math.hypot(final[1]-goal['x'],final[2]-goal['y']),4)
+                row['physical_goal_reached'] = row['true_goal_distance_m'] <= .25
+            with open(os.path.join(log_dir, trial_name + '_truth_poses.csv'), 'w') as stream:
+                writer = csv.writer(stream)
+                writer.writerow(['sim_time_s','x','y'])
+                writer.writerows(monitor._truth_samples)
             with open(os.path.join(log_dir, trial_name + '_contacts.json'), 'w') as stream:
                 json.dump(monitor.contact_audit(), stream, indent=2)
+            with open(os.path.join(log_dir, trial_name + '_first_plan.json'), 'w') as stream:
+                json.dump(monitor._first_plan, stream)
+            with open(os.path.join(log_dir, trial_name + '_commands.csv'), 'w') as stream:
+                writer = csv.writer(stream)
+                writer.writerow(['sim_time_s','linear_x','angular_z'])
+                writer.writerows(monitor._commands)
             row['goal_sent'] = monitor.goal_sent
             row['goal_accepted'] = monitor.goal_accepted
 
@@ -1015,7 +1080,8 @@ def main():
 
     fieldnames = [
         'trial_id', 'scenario', 'condition', 'semantic_ready',
-        'collision_metric', 'pose_overlap', 'grass_path_m', 'grass_central_crossing', 'start_x', 'start_y', 'start_yaw',
+        'collision_metric', 'pose_overlap', 'grass_path_m', 'grass_central_crossing',
+        'true_path_length_m', 'true_goal_distance_m', 'physical_goal_reached', 'start_x', 'start_y', 'start_yaw',
         'goal_x', 'goal_y', 'straight_line_distance',
         'nav2_result', 'collision', 'success', 'path_length_m',
         'wall_clock_s', 'number_of_recoveries',
