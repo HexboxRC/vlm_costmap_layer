@@ -92,3 +92,12 @@ bypass. Validate the pose stream with known spawn and glass contact geometry,
 then one additional development route_choice/ground_truth smoke, seed 20261014,
 before freezing and starting the pilot. Preserve the original nine smokes.
 No planner/controller/physics/protocol tuning; pilot seeds/counts unchanged.
+
+## Development diagnostic after second short-bypass abort
+
+Pilot has not started. Original geometry remains frozen for one diagnostic
+with seed 20261015, zero start jitter, route_choice/ground_truth. Add passive
+first-global-plan and commanded-velocity recording; inspect why the robot
+moves away from the goal before considering a documented geometry revision.
+This is development evidence outside the fixed pilot denominator. No Nav2
+parameter tuning; no clock investigation. Time-box diagnosis to one hour.
