@@ -76,3 +76,19 @@ first affected run. This is a fixed sample budget, not a power claim.
 Report per-cell denominators, 95% Wilson intervals for rates, paired seed
 comparisons, full outcome/exclusion tables and latency distributions
 (median/p90/p95/p99/max plus raw observations and timeout counts).
+
+## October 13 amendment before the first pilot attempt: evaluation pose
+
+Development smokes revealed an estimated pose outside the arena in one
+abort. Add passive 20 Hz Gazebo model-pose telemetry identically in every
+condition. It is evaluation-only, never supplied to Nav2, TF or localization.
+Primary grass exposure and path length use these world poses; preserve
+estimated map-frame trajectories and their path lengths as diagnostics.
+Missing/stalled evaluation poses are infrastructure failures. Report final
+physical goal distance and whether it is <=.25 m separately from the original
+Nav2-goal-success-without-contact flag; do not silently redefine success.
+Do not count incomplete navigation with no observed crossing as a successful
+bypass. Validate the pose stream with known spawn and glass contact geometry,
+then one additional development route_choice/ground_truth smoke, seed 20261014,
+before freezing and starting the pilot. Preserve the original nine smokes.
+No planner/controller/physics/protocol tuning; pilot seeds/counts unchanged.
