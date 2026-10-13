@@ -8,7 +8,7 @@ from publish_ground_truth import build_grid
 
 
 class OracleTest(unittest.TestCase):
-    def test_glass_is_lethal_grass_unpenalized_and_other_cells_unobserved(self):
+    def test_glass_is_lethal_grass_intermediate_and_other_cells_unobserved(self):
         grid = build_grid(Path(__file__).resolve().parents[1] / 'worlds/arena.sdf')
 
         def cost(x, y):
@@ -18,7 +18,7 @@ class OracleTest(unittest.TestCase):
         self.assertEqual(cost(0, 4), 254)
         self.assertEqual(cost(.2, 4), 255)
         self.assertEqual(cost(0, 2.5), 255)
-        self.assertEqual(cost(0, -4), 0)
+        self.assertEqual(cost(0, -4), 40)
         self.assertEqual(cost(2, -4), 255)
         self.assertEqual(cost(-4, 4), 255)
         self.assertEqual(len(grid.data), grid.metadata.size_x * grid.metadata.size_y)

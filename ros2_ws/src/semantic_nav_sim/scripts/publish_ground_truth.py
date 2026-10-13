@@ -16,7 +16,7 @@ from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 
 
-def build_grid(world_path, glass_cost=254, grass_cost=0):
+def build_grid(world_path, glass_cost=254, grass_cost=40):
     if not all(isinstance(v, int) and 0 <= v <= 254 for v in (glass_cost, grass_cost)):
         raise ValueError('Semantic costs must be integers in 0..254')
     world = ET.parse(world_path).getroot().find('world')
@@ -55,7 +55,7 @@ class GroundTruthPublisher(Node):
         self.declare_parameter('world', str(Path(get_package_share_directory(
             'semantic_nav_sim')) / 'worlds/arena.sdf'))
         self.declare_parameter('glass_cost', 254)
-        self.declare_parameter('grass_cost', 0)
+        self.declare_parameter('grass_cost', 40)
         self.grid = build_grid(self.get_parameter('world').value,
                                self.get_parameter('glass_cost').value,
                                self.get_parameter('grass_cost').value)

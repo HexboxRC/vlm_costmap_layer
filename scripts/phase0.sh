@@ -9,6 +9,9 @@ export ROS_HOME="$runtime/ros" ROS_LOG_DIR="$runtime/ros/log"
 export GZ_HOMEDIR="$runtime/gz" XDG_CACHE_HOME="$runtime/cache"
 export XDG_CONFIG_HOME="$runtime/config" TMPDIR="$runtime/tmp"
 export MPLCONFIGDIR="$runtime/matplotlib"
+if [[ "${1:-}" == design ]]; then
+    exec python3 scripts/check_scenario_design.py
+fi
 if [[ "${1:-}" == test ]]; then
     exec python3 -m unittest discover -s ros2_ws/src/semantic_nav_sim/tests -v
 fi

@@ -1,0 +1,56 @@
+[
+  {
+    "scenario": "route_choice",
+    "condition": "baseline",
+    "path_length_m": 8.000000000000053,
+    "grass_length_m": 2.9999999999999942,
+    "central_crossing": true,
+    "expected_crossing": true,
+    "hypothesis_met": true
+  },
+  {
+    "scenario": "route_choice",
+    "condition": "ground_truth",
+    "path_length_m": 8.28724731676202,
+    "grass_length_m": 0.0,
+    "central_crossing": false,
+    "expected_crossing": false,
+    "hypothesis_met": true
+  },
+  {
+    "scenario": "route_choice",
+    "condition": "binary",
+    "path_length_m": 8.864829071997045,
+    "grass_length_m": 0.0,
+    "central_crossing": false,
+    "expected_crossing": false,
+    "hypothesis_met": true
+  },
+  {
+    "scenario": "forced_crossing",
+    "condition": "baseline",
+    "path_length_m": 8.000000000000053,
+    "grass_length_m": 2.9999999999999942,
+    "central_crossing": true,
+    "expected_crossing": true,
+    "hypothesis_met": true
+  },
+  {
+    "scenario": "forced_crossing",
+    "condition": "ground_truth",
+    "path_length_m": 8.000000000000053,
+    "grass_length_m": 2.9999999999999942,
+    "central_crossing": true,
+    "expected_crossing": true,
+    "hypothesis_met": true
+  },
+  {
+    "scenario": "forced_crossing",
+    "condition": "binary",
+    "path_length_m": 16.892214662640885,
+    "grass_length_m": 0.0,
+    "central_crossing": false,
+    "expected_crossing": false,
+    "hypothesis_met": true
+  }
+]

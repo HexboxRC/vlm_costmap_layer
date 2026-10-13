@@ -7,6 +7,13 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(nav2_navfn_planner REQUIRED)
+find_package(nav2_costmap_2d REQUIRED)
+find_package(nav2_util REQUIRED)
+find_package(rclcpp REQUIRED)
+add_executable(probe_routes src/probe_routes.cpp)
+ament_target_dependencies(probe_routes nav2_navfn_planner nav2_costmap_2d nav2_util rclcpp)
+install(TARGETS probe_routes DESTINATION lib/${PROJECT_NAME})
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)

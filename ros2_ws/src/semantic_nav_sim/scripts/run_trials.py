@@ -498,7 +498,7 @@ class TrialMonitor(Node):
                 break
         return valid and self.sim_time_check['clock_advanced']
 
-    def verify_ground_truth(self):
+    def verify_ground_truth(self, grass_cost=40):
         """Require actual source delivery and glass cost in the global master map."""
         received = {}
         qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
@@ -531,7 +531,7 @@ class TrialMonitor(Node):
                                            grass_cost=cost_at(0., -4.))
                 if (source.metadata.layer == 'ground_truth' and 0 <= age <= 5. and
                         self.semantic_check['glass_cost'] == 254 and
-                        self.semantic_check['grass_cost'] == 0):
+                        self.semantic_check['grass_cost'] == grass_cost):
                     self.semantic_check['ready'] = True
                     return True
             return False
@@ -660,7 +660,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         launch_proc = subprocess.Popen(
             ['ros2', 'launch', 'semantic_nav_sim', 'bringup_all.launch.py',
              f'x:={jx}', f'y:={jy}', f'yaw:={jyaw}', f'world:={args.world_path}',
-             f'params_file:={args.params_path}', f'condition:={args.condition}'],
+             f'params_file:={args.params_path}', f'condition:={args.condition}',
+             f'grass_cost:={254 if args.condition == "binary" else 40}'],
             stdout=log, stderr=subprocess.STDOUT,
             start_new_session=True,
         )
@@ -678,8 +679,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                     json.dump(monitor.sim_time_check, stream, indent=2)
                 if not row['nav2_use_sim_time']:
                     readiness_error = 'use_sim_time_verification_failed'
-            if not readiness_error and args.condition == 'ground_truth':
-                row['semantic_ready'] = monitor.verify_ground_truth()
+            if not readiness_error and args.condition != 'baseline':
+                row['semantic_ready'] = monitor.verify_ground_truth(254 if args.condition == 'binary' else 40)
                 with open(os.path.join(log_dir, trial_name + '_semantic.json'), 'w') as stream:
                     json.dump(monitor.semantic_check, stream, indent=2)
                 if not row['semantic_ready']:
@@ -842,7 +843,7 @@ def main():
                               'Default: all scenarios in the config.')
     parser.add_argument('--trials', type=int, default=10,
                          help='Trials per scenario (default: 10).')
-    parser.add_argument('--condition', choices=['baseline', 'ground_truth'], default='baseline',
+    parser.add_argument('--condition', choices=['baseline', 'ground_truth', 'binary'], default='baseline',
                         help='Baseline excludes the oracle and semantic layer entirely.')
     parser.add_argument('--jitter-xy', type=float, default=0.10,
                          help='Uniform +/- meters applied to start x,y (default: 0.10).')
@@ -890,11 +891,20 @@ def main():
     os.makedirs(os.path.dirname(out_path) or '.', exist_ok=True)
     os.makedirs(log_dir, exist_ok=True)
 
-    world = ET.parse(os.path.join(get_package_share_directory('semantic_nav_sim'),
-                                  'worlds', 'arena.sdf'))
-    world.find('./world/physics/real_time_factor').text = str(args.rtf)
-    args.world_path = str(Path(log_dir, 'arena.sdf').resolve())
-    world.write(args.world_path, encoding='utf-8', xml_declaration=True)
+    args.world_paths = {}
+    for scenario in scenarios:
+        world = ET.parse(os.path.join(get_package_share_directory('semantic_nav_sim'),
+                                      'worlds', 'arena.sdf'))
+        world.find('./world/physics/real_time_factor').text = str(args.rtf)
+        if 'grass_pose' in scenario:
+            grass = world.find('./world/model[@name="grass_patch"]')
+            x, y = scenario['grass_pose']
+            sx, sy = scenario['grass_size']
+            grass.find('pose').text = f'{x} {y} 0.001 0 0 0'
+            grass.find('link/visual/geometry/plane/size').text = f'{sx} {sy}'
+        path = str(Path(log_dir, scenario['name'] + '.sdf').resolve())
+        world.write(path, encoding='utf-8', xml_declaration=True)
+        args.world_paths[scenario['name']] = path
     params = yaml.safe_load((PROJECT_ROOT / 'ros2_ws/src/semantic_nav_sim/config/nav2_params.yaml').read_text())
     controller = params['controller_server']['ros__parameters']['FollowPath']
     controller['vx_max'] = args.max_linear_speed
@@ -902,7 +912,7 @@ def main():
     smoother = params['velocity_smoother']['ros__parameters']
     smoother['max_velocity'][0] = args.max_linear_speed
     smoother['min_velocity'][0] = -args.max_linear_speed
-    if args.condition == 'ground_truth':
+    if args.condition != 'baseline':
         for name in ('local_costmap', 'global_costmap'):
             costmap = params[name][name]['ros__parameters']
             costmap['plugins'].insert(costmap['plugins'].index('inflation_layer'), 'semantic_layer')
@@ -913,6 +923,9 @@ def main():
     Path(args.params_path).write_text(yaml.safe_dump(params, sort_keys=False))
     with open(os.path.splitext(out_path)[0] + '_manifest.json', 'w') as manifest:
         metadata = dict(vars(args))
+        metadata['scenario_definitions'] = scenarios
+        metadata['world_sha256'] = {name: hashlib.sha256(Path(path).read_bytes()).hexdigest()
+                                    for name, path in args.world_paths.items()}
         metadata['runner_restart_policy'] = 'per_trial'
         metadata['clock_policy'] = 'sim_time_host_steps_accepted_v1'
         metadata['params_sha256'] = hashlib.sha256(Path(args.params_path).read_bytes()).hexdigest()
@@ -927,7 +940,7 @@ def main():
                          'urdf/semantic_nav_robot.urdf.xacro'):
             source = PROJECT_ROOT / 'ros2_ws/src/semantic_nav_sim' / relative
             metadata['source_sha256'][relative] = hashlib.sha256(source.read_bytes()).hexdigest()
-        if args.condition == 'ground_truth':
+        if args.condition != 'baseline':
             for source in sorted((PROJECT_ROOT / 'ros2_ws/src/semantic_nav_costmap_layer').rglob('*')):
                 if source.is_file():
                     metadata['source_sha256'][str(source.relative_to(PROJECT_ROOT))] = (
@@ -978,6 +991,7 @@ def main():
         total = len(scenarios) * args.trials
         done = 0
         for scenario in scenarios:
+            args.world_path = args.world_paths[scenario['name']]
             for trial_idx in range(args.trials):
                 done += 1
                 print(f'[{ts()}] trial {done}/{total}: '

@@ -51,3 +51,19 @@ scenarios:
       x: 4.0
       y: -4.0
     straight_line_distance: 8.0
+
+  - name: route_choice
+    description: Short clean bypass around intermediate-cost grass.
+    start: {x: -4.0, y: -4.0, yaw: 0.0}
+    goal: {x: 4.0, y: -4.0}
+    straight_line_distance: 8.0
+    grass_pose: [0.0, -4.0]
+    grass_size: [3.0, 1.5]
+
+  - name: forced_crossing
+    description: Tall grass patch makes the clean bypass expensive.
+    start: {x: -4.0, y: -4.0, yaw: 0.0}
+    goal: {x: 4.0, y: -4.0}
+    straight_line_distance: 8.0
+    grass_pose: [0.0, -2.0]
+    grass_size: [3.0, 7.0]
