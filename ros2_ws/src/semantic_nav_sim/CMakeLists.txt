@@ -39,6 +39,8 @@ install(PROGRAMS
   scripts/run_trials.py
   scripts/seed_initial_pose.py
   scripts/publish_ground_truth.py
+  scripts/contact_metrics.py
+  scripts/trajectory_metrics.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

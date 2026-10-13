@@ -12,9 +12,7 @@
     </plugin>
     <plugin filename="gz-sim-scene-broadcaster-system" name="gz::sim::systems::SceneBroadcaster"/>
     <plugin filename="gz-sim-user-commands-system" name="gz::sim::systems::UserCommands"/>
-    <!-- Contact-sensor wiring for collision detection is added and
-         verified in Milestone 6 (trial runner), not speculatively
-         here. -->
+    <plugin filename="gz-sim-contact-system" name="gz::sim::systems::Contact"/>
 
     <light type="directional" name="sun">
       <cast_shadows>true</cast_shadows>
@@ -51,6 +49,14 @@
             <diffuse>0.5 0.5 0.5 1</diffuse>
           </material>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/ground_contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
 
@@ -67,6 +73,14 @@
           <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
           <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
     <model name="wall_south">
@@ -80,6 +94,14 @@
           <geometry><box><size>12.3 0.15 1.5</size></box></geometry>
           <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
     <model name="wall_east">
@@ -93,6 +115,14 @@
           <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
           <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
     <model name="wall_west">
@@ -106,6 +136,14 @@
           <geometry><box><size>0.15 12.3 1.5</size></box></geometry>
           <material><ambient>0.7 0.7 0.7 1</ambient><diffuse>0.7 0.7 0.7 1</diffuse></material>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
 
@@ -131,6 +169,14 @@
           <transparency>0.6</transparency>
           <visibility_flags>2</visibility_flags>
         </visual>
+      <sensor name="benchmark_contact" type="contact">
+  <always_on>true</always_on>
+  <update_rate>50</update_rate>
+  <contact>
+    <topic>/benchmark/contacts</topic>
+    <collision>collision</collision>
+  </contact>
+</sensor>
       </link>
     </model>
 

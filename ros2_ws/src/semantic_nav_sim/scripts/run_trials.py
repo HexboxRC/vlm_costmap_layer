@@ -70,6 +70,10 @@ from lifecycle_msgs.msg import State
 from lifecycle_msgs.srv import GetState
 from nav2_msgs.action import NavigateToPose
 from nav2_msgs.msg import Costmap
+from ros_gz_interfaces.msg import Contacts
+from rclpy.qos import qos_profile_sensor_data
+from contact_metrics import classify_pair
+from trajectory_metrics import grass_metrics
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from rclpy.parameter import Parameter
@@ -311,6 +315,14 @@ class TrialMonitor(Node):
         self._pose_samples = []
         self.path_length = 0.0
         self.collided = False
+        self.pose_overlap = False
+        self._contact_events = []
+        self._contact_counts = {'ground': 0, 'obstacle': 0, 'irrelevant': 0}
+        self._last_contact_sim = None
+        self._contact_max_gap = 0.
+        self.create_subscription(Contacts, '/benchmark/contacts', self._contacts_cb, 1000)
+        self.create_subscription(Contacts, '/benchmark/ground_contacts', self._contacts_cb,
+                                 qos_profile_sensor_data)
         self._pose_timer = self.create_timer(0.05, self._sample_pose)  # ~20 Hz
 
         self._cmd_vel_intervals = []
@@ -399,8 +411,44 @@ class TrialMonitor(Node):
         m = self._collision_margin
         for (xmin, xmax, ymin, ymax) in OBSTACLE_BOXES:
             if (xmin - m) <= x <= (xmax + m) and (ymin - m) <= y <= (ymax + m):
-                self.collided = True
+                self.pose_overlap = True
                 break
+
+    def _contacts_cb(self, msg):
+        now = self.get_clock().now().nanoseconds * 1e-9
+        if self._last_contact_sim is not None:
+            self._contact_max_gap = max(self._contact_max_gap, now-self._last_contact_sim)
+        self._last_contact_sim = now
+        for contact in msg.contacts:
+            kind = classify_pair(contact.collision1.name, contact.collision2.name)
+            self._contact_counts[kind] += 1
+            if kind == 'obstacle':
+                self._contact_events.append(dict(
+                    sim_time_s=now, source_stamp_s=msg.header.stamp.sec+msg.header.stamp.nanosec*1e-9,
+                    navigation=self.goal_sent,
+                    collision1=contact.collision1.name, collision2=contact.collision2.name,
+                    depths=list(contact.depths),
+                    positions=[dict(x=p.x, y=p.y, z=p.z) for p in contact.positions]))
+                if self.goal_sent:
+                    self.collided = True
+
+    def contact_healthy(self):
+        now = self.get_clock().now().nanoseconds * 1e-9
+        return (self._contact_counts['ground'] > 0 and self._last_contact_sim is not None
+                and 0 <= now-self._last_contact_sim <= 2. and self._contact_max_gap <= 2.)
+
+    def verify_contacts(self):
+        deadline = time.monotonic()+5.
+        while time.monotonic() < deadline:
+            rclpy.spin_once(self, timeout_sec=.1)
+            if self.contact_healthy():
+                return True
+        return False
+
+    def contact_audit(self):
+        return dict(metric='gazebo_obstacle_contacts_v1', counts=self._contact_counts,
+                    max_gap_sim_s=self._contact_max_gap, events=self._contact_events,
+                    healthy=self.contact_healthy())
 
     def loop_rate_stats(self):
         if not self._cmd_vel_intervals:
@@ -552,6 +600,13 @@ class TrialMonitor(Node):
         def feedback_cb(feedback_msg):
             recoveries['n'] = feedback_msg.feedback.number_of_recoveries
 
+        # Measurement interval starts at goal submission; retain command-gap history.
+        self._pose_samples = []
+        self._last_sample = None
+        self.path_length = 0.
+        self.pose_overlap = False
+        self.collided = False
+        self._contact_max_gap = 0.
         self.goal_sent = True
         send_future = self._nav_client.send_goal_async(
             goal_msg, feedback_callback=feedback_cb)
@@ -627,6 +682,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
         'scenario': scenario['name'],
         'condition': args.condition,
         'semantic_ready': None,
+        'collision_metric': 'gazebo_obstacle_contacts_v1',
+        'pose_overlap': None, 'grass_path_m': None, 'grass_central_crossing': None,
         'start_x': round(jx, 4), 'start_y': round(jy, 4), 'start_yaw': round(jyaw, 4),
         'goal_x': goal['x'], 'goal_y': goal['y'],
         'straight_line_distance': scenario['straight_line_distance'],
@@ -679,6 +736,8 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                     json.dump(monitor.sim_time_check, stream, indent=2)
                 if not row['nav2_use_sim_time']:
                     readiness_error = 'use_sim_time_verification_failed'
+            if not readiness_error and not monitor.verify_contacts():
+                readiness_error = 'contact_sensor_not_ready'
             if not readiness_error and args.condition != 'baseline':
                 row['semantic_ready'] = monitor.verify_ground_truth(254 if args.condition == 'binary' else 40)
                 with open(os.path.join(log_dir, trial_name + '_semantic.json'), 'w') as stream:
@@ -705,6 +764,12 @@ def run_one_trial(args, scenario, trial_idx, rng, log_dir):
                     row['failure_class'] = 'NONE' if result == 'succeeded' else 'NAVIGATION'
                 else:
                     row['error'] = result
+            if monitor.goal_accepted and not monitor.contact_healthy():
+                row['error'] = 'contact_stream_unhealthy'
+            row['pose_overlap'] = monitor.pose_overlap if monitor.goal_accepted else None
+            row.update(grass_metrics(monitor._pose_samples, scenario))
+            with open(os.path.join(log_dir, trial_name + '_contacts.json'), 'w') as stream:
+                json.dump(monitor.contact_audit(), stream, indent=2)
             row['goal_sent'] = monitor.goal_sent
             row['goal_accepted'] = monitor.goal_accepted
 
@@ -933,7 +998,8 @@ def main():
             ['git', 'rev-parse', 'HEAD'], cwd=PROJECT_ROOT, text=True).strip()
         metadata['source_sha256'] = {}
         for relative in ('scripts/run_trials.py', 'scripts/seed_initial_pose.py',
-                         'scripts/publish_ground_truth.py',
+                         'scripts/publish_ground_truth.py', 'scripts/contact_metrics.py',
+                         'scripts/trajectory_metrics.py', 'config/robot_bridge.yaml',
                          'config/nav2_params.yaml', 'config/scenarios.yaml',
                          'launch/nav2_bringup.launch.py', 'launch/robot_bringup.launch.py',
                          'launch/bringup_all.launch.py', 'worlds/arena.sdf',
@@ -948,7 +1014,8 @@ def main():
         json.dump(metadata, manifest, indent=2)
 
     fieldnames = [
-        'trial_id', 'scenario', 'condition', 'semantic_ready', 'start_x', 'start_y', 'start_yaw',
+        'trial_id', 'scenario', 'condition', 'semantic_ready',
+        'collision_metric', 'pose_overlap', 'grass_path_m', 'grass_central_crossing', 'start_x', 'start_y', 'start_yaw',
         'goal_x', 'goal_y', 'straight_line_distance',
         'nav2_result', 'collision', 'success', 'path_length_m',
         'wall_clock_s', 'number_of_recoveries',

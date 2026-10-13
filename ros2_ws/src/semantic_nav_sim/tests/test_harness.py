@@ -103,6 +103,10 @@ class FailureClassificationTest(unittest.TestCase):
                                            ('wall_safety_timeout', True, 'INFRASTRUCTURE')]:
             with self.subTest(result=result):
                 monitor = MagicMock()
+                monitor._pose_samples = []
+                monitor.pose_overlap = False
+                monitor.contact_audit.return_value = {}
+                monitor.contact_healthy.return_value = True
                 monitor.wait_for_ready.return_value = ''
                 monitor.verify_sim_time.return_value = True
                 monitor.sim_time_check = {'clock_advanced': True}
@@ -143,6 +147,10 @@ class FailureClassificationTest(unittest.TestCase):
         import run_trials
 
         monitor = MagicMock()
+        monitor._pose_samples = []
+        monitor.pose_overlap = False
+        monitor.contact_audit.return_value = {}
+        monitor.contact_healthy.return_value = True
         monitor.wait_for_ready.return_value = 'bt_navigator_not_active_timeout'
         monitor.goal_sent = False
         monitor.goal_accepted = False
@@ -226,6 +234,10 @@ class AcceptedHostClockTest(unittest.TestCase):
         import run_trials
 
         monitor = MagicMock()
+        monitor._pose_samples = []
+        monitor.pose_overlap = False
+        monitor.contact_audit.return_value = {}
+        monitor.contact_healthy.return_value = True
         monitor.clock_events = []
         monitor.get_clock.return_value.now.return_value = Time(nanoseconds=0)
         handle = monitor._nav_client.send_goal_async.return_value.result.return_value
@@ -249,6 +261,10 @@ class AcceptedHostClockTest(unittest.TestCase):
         from rclpy.time import Time
         import run_trials
         monitor = MagicMock()
+        monitor._pose_samples = []
+        monitor.pose_overlap = False
+        monitor.contact_audit.return_value = {}
+        monitor.contact_healthy.return_value = True
         monitor.clock_events = []
         monitor.get_clock.return_value.now.return_value = Time(nanoseconds=0)
         handle = monitor._nav_client.send_goal_async.return_value.result.return_value
