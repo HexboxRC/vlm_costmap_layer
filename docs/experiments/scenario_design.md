@@ -35,6 +35,15 @@ the apt-installed Jazzy header). Thus 3 m of cost-40 grass adds approximately
 the long bypass is not. This is a declared planner objective, not a claim
 that grass has a physically measured damage cost.
 
+Grass exposure is explicitly a centerline metric. Intermediate cost 40 does
+not receive the lethal-obstacle inflation margin. A centerline bypass can
+therefore leave a wheel or chassis edge over the patch; it is not a claim
+of zero footprint overlap. In the first three successful graduated pilot
+bypasses, central-band centerline clearance was approximately .065–.147 m,
+smaller than the robot's half-width in some segments. Preserve the declared
+metric and label this limitation; do not silently pad the grass or alter
+costs after observing pilot results.
+
 Run `bash scripts/phase0.sh design` with a fresh diagnostic output directory;
 the script refuses to overwrite existing paths. Plot saved results with
 `scripts/plot_scenario_design.py`. Launch scenario variants through the

@@ -56,6 +56,15 @@ and Pi absolute timestamps. Host timing remains subject to the accepted WSL
 clock limitation; keep anomaly indicators and do not present host durations
 as a validated scientific clock without qualification. No time-service work.
 
+Before cloud trials, declare pipeline-readiness criteria independently of
+label correctness. Do not require the model to find the known glass before
+admitting an attempt: that would select out detection failures. A connected,
+calibrated pipeline can return an empty, incorrect, rejected or late label;
+retain that perception result and its navigation consequences. Distinguish
+pipeline startup unavailability from provider/perception failures during an
+otherwise valid navigation attempt. The oracle's known-cell readiness probe
+must not be reused as a correctness gate for cloud observations.
+
 Report raw samples, n attempted/returned/applied, timeout and rejection rates,
 ECDF/histogram, median, p90, p95, p99 and max. Do not compute percentiles only
 on successful navigation trials or hide timeouts. Simulated age, network/API

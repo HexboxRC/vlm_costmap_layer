@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from run_campaign import completion_state
 
 root=Path(__file__).resolve().parents[1]
 p=argparse.ArgumentParser()
@@ -31,9 +32,7 @@ for i, cell in enumerate(schedule):
     name=f"{cell['seed']}_{cell['scenario']}_{cell['condition']}"
     csvfile=out/(name+'.csv')
     completion=out/(name+'.complete.json')
-    if csvfile.exists():
-        if not completion.exists():
-            raise SystemExit(f'Incomplete prior attempt; do not overwrite or retry: {csvfile}')
+    if completion_state(out, cell) == 'completed':
         print(f'SKIP recorded attempt {i+1}/{len(schedule)} {name}',flush=True)
         continue
     cmd=['bash','scripts/phase0.sh','--scenario',cell['scenario'],'--condition',cell['condition'],
