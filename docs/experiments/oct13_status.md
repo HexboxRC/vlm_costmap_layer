@@ -145,5 +145,11 @@ The pilot parent exited successfully; tool session 36828 is finished.
 Provider-independent projection and latency utilities are prepared under
 `ros2_ws/src/semantic_nav_perception` (eight pure tests pass). They are not
 installed, connected to ROS, used by this pilot, or deployed on the Pi.
-The stationary camera-capture diagnostic is next. Do not guess a Pi
-endpoint, provider or credential while the user has deferred those details.
+Four stationary camera captures now pass with clean teardown. Manual base
+projection has maximum endpoint error 0.009 m at 1.775 m camera-to-front
+distance; assumed +/-2 pixel sensitivity is 0.151 m there, 0.354–0.623 m
+farther away. The closest view clips both endpoints and is rejected. This
+validates a limited calibration case, not VLM accuracy or moving perception.
+See [localization evidence and limitations](cloud_localization_design.md).
+Pi deployment and live latency distributions remain pending the deferred
+connection/provider details; no endpoint or credential was guessed.

@@ -12,6 +12,10 @@ export MPLCONFIGDIR="$runtime/matplotlib"
 if [[ "${1:-}" == smoke || "${1:-}" == pilot ]]; then
     exec python3 scripts/run_matched_pilot.py "$1"
 fi
+if [[ "${1:-}" == projection-capture ]]; then
+    shift
+    exec python3 scripts/capture_projection_evidence.py "$@"
+fi
 if [[ "${1:-}" == campaign ]]; then
     shift
     exec python3 scripts/run_campaign.py "$@"

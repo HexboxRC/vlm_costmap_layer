@@ -1,8 +1,9 @@
 # Proposed Pi-hosted cloud adapter — explained before implementation
 
-Status: design only; implement after the matched pilot. Pi access, OS/ROS
-compatibility, provider/model and credential arrangement are pending user
-input. No credentials belong in committed files. Local Pi model comparison
+Status: pure projection and latency utilities plus stationary rendered-camera
+validation are implemented; the network/ROS/cloud node is not deployed. Pi
+access, OS/ROS compatibility, provider/model and credential arrangement are
+pending user input, which the user explicitly deferred. No credentials belong in committed files. Local Pi model comparison
 and physical robot validation remain out of scope.
 
 ## Spatial method for lidar-transparent glass
@@ -74,3 +75,36 @@ Do not issue paid API requests until provider/model and intended credentials
 are available; the campaign's fixed trial budget does not imply unlimited
 API spend. Establish an explicit per-trial request cap in a dated amendment
 before the first cloud run, with identical cloud settings across scenarios.
+
+## October 13 rendered-camera check
+
+Four stationary captures at robot x=-4,-3,-2,-1.5, y=4 completed with clean
+teardown. Each retains the image, CameraInfo, static camera TF composed with
+Gazebo pose for evaluation only, scan, world hash and launch log. Deployment
+must use the estimated map transform cached with the image; this diagnostic
+does not validate localization error under motion or delayed application.
+Manually inspected endpoint annotations were projected without fitting their
+positions to the SDF. This is not a blinded annotation study or VLM evaluation.
+Only the scoring script reads the withheld world geometry.
+
+| Camera-to-front x distance | Maximum endpoint error | Midpoint error | Length error | Maximum sensitivity, assumed +/-2 px | Example 0.25 m sensitivity gate |
+|---|---|---|---|---|---|
+| 3.775 m | 0.026 m | 0.025 m | 0.010 m | 0.623 m | reject |
+| 2.775 m | 0.081 m | 0.074 m | 0.057 m | 0.354 m | reject |
+| 1.775 m | 0.009 m | 0.006 m | 0.008 m | 0.151 m | accept |
+| 1.275 m | unavailable | unavailable | unavailable | unavailable | reject: endpoints clipped |
+
+Orientation error was approximately zero in these axis-aligned views, with
+manually chosen equal-row endpoints; it is not evidence of general orientation
+accuracy. Forward lidar ranges were 9.926, 8.926, 7.925 and 7.425 m, showing
+background returns through the nearer glass. Lidar is not an input to projection.
+The practical window for two visible, sufficiently precise endpoints is narrow.
+The assumed two-pixel bound is unvalidated for the future model; select actual
+acceptance limits only after model endpoint-error measurements. Do not interpret
+the gate or the small manual reconstruction error as cloud readiness.
+
+[Raw captures, annotations and evaluation](evidence/oct13_projection.tar.gz)
+retain all four views, including the clipped rejection. Eight pure projection
+and latency tests pass. Remaining validation includes actual VLM outputs,
+motion/cached-transform behavior, delayed responses and costmap application
+acknowledgements before any claim of end-to-end label latency.
